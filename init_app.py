@@ -24,8 +24,6 @@ from flask_session import Session
 # Local imports
 from config import Config
 from models import User, Product
-from routes import main as main_blueprint
-from auth import auth as auth_blueprint
 
 # Initialize Flask extensions
 db = SQLAlchemy()
@@ -86,6 +84,8 @@ def create_app(config_class=Config):
     flask_app.logger.info('E-commerce startup')
 
     # Register blueprints
+    from routes import main as main_blueprint
+    from auth import auth as auth_blueprint
     flask_app.register_blueprint(main_blueprint)
     flask_app.register_blueprint(auth_blueprint)
 
