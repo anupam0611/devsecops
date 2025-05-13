@@ -24,7 +24,7 @@ from flask_session import Session
 
 from models import db, User, Product, Order, OrderItem
 from config import Config
-from utils.security import validate_password
+from auth import auth as auth_blueprint
 
 # Initialize Flask extensions
 login_manager = LoginManager()
@@ -136,9 +136,6 @@ def add_to_cart(product_id):
         save_cart(cart_data)
         
         flash('Product added to cart', 'success')
-    except ValueError:
-        current_app.logger.error('Invalid quantity value')
-        flash('Invalid quantity', 'error')
     except (ValueError, KeyError) as e:
         current_app.logger.error('Error adding to cart: %s', str(e))
         flash('Error adding product to cart', 'error')
@@ -172,9 +169,6 @@ def update_cart(product_id):
         
         save_cart(cart_data)
         flash('Cart updated', 'success')
-    except ValueError:
-        current_app.logger.error('Invalid quantity value')
-        flash('Invalid quantity', 'error')
     except (ValueError, KeyError) as e:
         current_app.logger.error('Error updating cart: %s', str(e))
         flash('Error updating cart', 'error')
@@ -318,7 +312,6 @@ def create_app():
     flask_app.logger.info('E-commerce startup')
 
     # Register blueprints
-    from auth import auth as auth_blueprint
     flask_app.register_blueprint(main)
     flask_app.register_blueprint(auth_blueprint)
 

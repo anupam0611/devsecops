@@ -59,7 +59,12 @@ class Config:
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'SAMEORIGIN',
         'X-XSS-Protection': '1; mode=block',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
+        'Content-Security-Policy': (
+            "default-src 'self'; "
+            "img-src 'self' data: https:; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
+        )
     }
     
     # Session configuration
@@ -76,5 +81,28 @@ class Config:
     # Logging configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
     LOG_FILE = 'app.log'
-
-    REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0') 
+    
+    REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    
+    def get_config(self):
+        """
+        Get the current configuration as a dictionary.
+        
+        Returns:
+            dict: The current configuration settings
+        """
+        return {
+            key: value for key, value in self.__dict__.items()
+            if not key.startswith('_')
+        }
+    
+    def update_config(self, **kwargs):
+        """
+        Update configuration settings with new values.
+        
+        Args:
+            **kwargs: Configuration key-value pairs to update
+        """
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value) 
