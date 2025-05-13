@@ -126,7 +126,7 @@ jobs:
             }
       
       - name: Upload Security Reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: security-reports
           path: |
@@ -148,12 +148,12 @@ jobs:
             // Add Checkov findings
             comment += '### Infrastructure Security (Checkov)\n';
             if (checkovResults.results.failed_checks.length > 0) {
-              comment += '❌ Found security issues:\n';
+              comment += 'Found security issues:\n';
               checkovResults.results.failed_checks.forEach(check => {
                 comment += `- ${check.check_name}: ${check.check_result.message}\n`;
               });
             } else {
-              comment += '✅ No security issues found\n';
+              comment += 'No security issues found\n';
             }
             
             // Add Container findings
@@ -169,10 +169,10 @@ jobs:
             
             // Add GitHub Actions findings
             comment += '\n### GitHub Actions Security\n';
-            const actionlintOutput = process.env.ACTIONLINT_OUTPUT || '';
-            if (actionlintOutput) {
+            const actionIssues = process.env.ACTION_ISSUES || '';
+            if (actionIssues && actionIssues !== 'No security issues found in workflows') {
               comment += 'Found security issues:\n';
-              comment += actionlintOutput;
+              comment += actionIssues;
             } else {
               comment += 'No security issues found\n';
             }
