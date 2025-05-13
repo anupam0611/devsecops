@@ -11,7 +11,10 @@ from logging.handlers import RotatingFileHandler
 from decimal import Decimal
 from datetime import datetime, timedelta
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Blueprint
+from flask import (
+    Flask, render_template, request, redirect, url_for, flash, 
+    jsonify, session, Blueprint, current_app
+)
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
