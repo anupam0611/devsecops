@@ -35,10 +35,34 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
     def set_password(self, password):
+        """
+        Set the user's password hash.
+        
+        Args:
+            password (str): The plain text password to hash
+        """
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
+        """
+        Check if the provided password matches the stored hash.
+        
+        Args:
+            password (str): The plain text password to check
+            
+        Returns:
+            bool: True if password matches, False otherwise
+        """
         return bcrypt.check_password_hash(self.password_hash, password)
+
+    def get_active_orders(self):
+        """
+        Get all active orders for this user.
+        
+        Returns:
+            list: List of active Order objects
+        """
+        return Order.query.filter_by(user_id=self.id, status='active').all()
 
 class Product(db.Model):
     """
@@ -64,6 +88,31 @@ class Product(db.Model):
         """Return a string representation of the product."""
         return f'<Product {self.name}>'
 
+    def update_stock(self, quantity):
+        """
+        Update the product's stock quantity.
+        
+        Args:
+            quantity (int): The quantity to add (positive) or remove (negative)
+            
+        Returns:
+            bool: True if update was successful, False if resulting stock would be negative
+        """
+        new_stock = self.stock + quantity
+        if new_stock >= 0:
+            self.stock = new_stock
+            return True
+        return False
+
+    def is_in_stock(self):
+        """
+        Check if the product is currently in stock.
+        
+        Returns:
+            bool: True if stock > 0, False otherwise
+        """
+        return self.stock > 0
+
 class Order(db.Model):
     """
     Order model representing customer purchases.
@@ -86,6 +135,31 @@ class Order(db.Model):
         """Return a string representation of the order."""
         return f'<Order {self.id}>'
 
+    def get_total(self):
+        """
+        Calculate the total cost of the order.
+        
+        Returns:
+            float: Total cost of all items in the order
+        """
+        return sum(item.price * item.quantity for item in self.items)
+
+    def update_status(self, new_status):
+        """
+        Update the order status.
+        
+        Args:
+            new_status (str): The new status to set
+            
+        Returns:
+            bool: True if status was updated, False if invalid status
+        """
+        valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+        if new_status in valid_statuses:
+            self.status = new_status
+            return True
+        return False
+
 class OrderItem(db.Model):
     """
     OrderItem model representing individual items within an order.
@@ -106,4 +180,28 @@ class OrderItem(db.Model):
 
     def __repr__(self):
         """Return a string representation of the order item."""
-        return f'<OrderItem {self.id}>' 
+        return f'<OrderItem {self.id}>'
+
+    def get_subtotal(self):
+        """
+        Calculate the subtotal for this order item.
+        
+        Returns:
+            float: Subtotal (price * quantity)
+        """
+        return self.price * self.quantity
+
+    def update_quantity(self, new_quantity):
+        """
+        Update the quantity of this order item.
+        
+        Args:
+            new_quantity (int): The new quantity to set
+            
+        Returns:
+            bool: True if quantity was updated, False if invalid quantity
+        """
+        if new_quantity > 0:
+            self.quantity = new_quantity
+            return True
+        return False 
