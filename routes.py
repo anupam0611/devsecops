@@ -6,12 +6,12 @@ including product display, cart management, and order processing.
 """
 
 # Standard library imports
-from typing import List, Dict, Any, Optional
+from typing import Optional
 
 # Third-party imports
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, session, current_app
+    flash, current_app
 )
 from flask_login import login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
@@ -71,8 +71,8 @@ def add_to_cart_route(product_id: int) -> str:
     except ValueError:
         flash('Invalid quantity format.', 'error')
         return redirect(url_for('main.product_detail', product_id=product_id))
-    except Exception as e:
-        current_app.logger.error(f'Error adding to cart: {str(e)}')
+    except SQLAlchemyError as e:
+        current_app.logger.error(f'Database error adding to cart: {str(e)}')
         flash('An error occurred while adding to cart.', 'error')
         return redirect(url_for('main.index'))
 
@@ -99,8 +99,8 @@ def update_cart_route(product_id: int) -> str:
     except ValueError:
         flash('Invalid quantity format.', 'error')
         return redirect(url_for('main.cart'))
-    except Exception as e:
-        current_app.logger.error(f'Error updating cart: {str(e)}')
+    except SQLAlchemyError as e:
+        current_app.logger.error(f'Database error updating cart: {str(e)}')
         flash('An error occurred while updating cart.', 'error')
         return redirect(url_for('main.index'))
 
@@ -116,8 +116,8 @@ def remove_from_cart_route(product_id: int) -> str:
             flash('Failed to remove product from cart.', 'error')
         
         return redirect(url_for('main.cart'))
-    except Exception as e:
-        current_app.logger.error(f'Error removing from cart: {str(e)}')
+    except SQLAlchemyError as e:
+        current_app.logger.error(f'Database error removing from cart: {str(e)}')
         flash('An error occurred while removing from cart.', 'error')
         return redirect(url_for('main.index'))
 
@@ -154,7 +154,11 @@ def checkout() -> str:
             current_app.db.session.commit()
             clear_cart()
             
-            log_security_event('order_placed', f'Order {order.id} placed successfully', current_user.id)
+            log_security_event(
+                'order_placed',
+                f'Order {order.id} placed successfully',
+                current_user.id
+            )
             flash('Order placed successfully!', 'success')
             return redirect(url_for('main.order_confirmation', order_id=order.id))
             
@@ -162,12 +166,6 @@ def checkout() -> str:
             current_app.db.session.rollback()
             current_app.logger.error(f'Database error during checkout: {str(e)}')
             log_security_event('checkout_error', f'Database error: {str(e)}', current_user.id)
-            flash('An error occurred during checkout. Please try again.', 'error')
-            return redirect(url_for('main.cart'))
-        except Exception as e:
-            current_app.db.session.rollback()
-            current_app.logger.error(f'Checkout error: {str(e)}')
-            log_security_event('checkout_error', str(e), current_user.id)
             flash('An error occurred during checkout. Please try again.', 'error')
             return redirect(url_for('main.cart'))
     
@@ -180,11 +178,15 @@ def order_confirmation(order_id: int) -> str:
     try:
         order = Order.query.get_or_404(order_id)
         if order.user_id != current_user.id:
-            log_security_event('unauthorized_access', f'Attempted access to order {order_id}', current_user.id)
+            log_security_event(
+                'unauthorized_access',
+                f'Attempted access to order {order_id}',
+                current_user.id
+            )
             flash('Access denied.', 'error')
             return redirect(url_for('main.index'))
         return render_template('order_confirmation.html', order=order)
-    except Exception as e:
-        current_app.logger.error(f'Error accessing order confirmation: {str(e)}')
+    except SQLAlchemyError as e:
+        current_app.logger.error(f'Database error accessing order: {str(e)}')
         flash('An error occurred while accessing order details.', 'error')
         return redirect(url_for('main.index')) 
