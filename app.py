@@ -18,6 +18,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from decimal import Decimal
 from datetime import timedelta
+import datetime
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -408,6 +409,28 @@ def update_boss_speaker():
     else:
         flash('Product not found')
     return redirect(url_for('home'))
+
+@app.route('/health')
+def health_check():
+    """
+    Health check endpoint for container orchestration.
+    Returns 200 OK if the application is running properly.
+    """
+    try:
+        # Check database connection
+        db.session.execute('SELECT 1')
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'timestamp': datetime.datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        app.logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.datetime.utcnow().isoformat()
+        }), 500
 
 # Create database tables
 with app.app_context():
