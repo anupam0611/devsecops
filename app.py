@@ -139,7 +139,7 @@ def add_to_cart(product_id):
     except ValueError:
         current_app.logger.error('Invalid quantity value')
         flash('Invalid quantity', 'error')
-    except Exception as e:
+    except (ValueError, KeyError) as e:
         current_app.logger.error('Error adding to cart: %s', str(e))
         flash('Error adding product to cart', 'error')
     
@@ -175,7 +175,7 @@ def update_cart(product_id):
     except ValueError:
         current_app.logger.error('Invalid quantity value')
         flash('Invalid quantity', 'error')
-    except Exception as e:
+    except (ValueError, KeyError) as e:
         current_app.logger.error('Error updating cart: %s', str(e))
         flash('Error updating cart', 'error')
     
@@ -195,7 +195,7 @@ def remove_from_cart(product_id):
         cart_data.pop(product_id, None)
         save_cart(cart_data)
         flash('Product removed from cart', 'success')
-    except Exception as e:
+    except KeyError as e:
         current_app.logger.error('Error removing from cart: %s', str(e))
         flash('Error removing product from cart', 'error')
     
@@ -237,7 +237,7 @@ def checkout():
             flash('Order placed successfully', 'success')
             return redirect(url_for('main.order_confirmation', order_id=order.id))
             
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             db.session.rollback()
             current_app.logger.error('Error during checkout: %s', str(e))
             flash('Error processing your order', 'error')
