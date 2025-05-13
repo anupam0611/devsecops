@@ -9,10 +9,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from app import app, db
-from models import User, Product
 from routes import main as main_blueprint
 from auth import auth as auth_blueprint
+from models import User, Product
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -48,8 +47,8 @@ def init_db():
     This function creates all database tables and populates them with
     initial data if they don't exist.
     """
-    app = create_app()
-    with app.app_context():
+    flask_app = create_app()
+    with flask_app.app_context():
         # Create all database tables
         db.create_all()
         
