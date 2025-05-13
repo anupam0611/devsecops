@@ -18,6 +18,7 @@ from flask_session import Session
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_mail import Mail
 from werkzeug.security import generate_password_hash
 
 # Local imports
@@ -31,6 +32,7 @@ login_manager = LoginManager()
 session = Session()
 cors = CORS()
 limiter = Limiter(key_func=get_remote_address)
+mail = Mail()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -56,6 +58,7 @@ def create_app(config_class=Config):
     session.init_app(app)
     cors.init_app(app)
     limiter.init_app(app)
+    mail.init_app(app)
     
     # Configure login manager
     login_manager.login_view = 'auth.login'

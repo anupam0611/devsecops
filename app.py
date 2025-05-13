@@ -28,6 +28,10 @@ from utils.security import (
     allowed_file, secure_filename_with_hash, validate_password,
     log_security_event
 )
+from utils.cart import (
+    get_cart_items, add_to_cart, update_cart_item,
+    remove_from_cart, clear_cart
+)
 
 # Create main blueprint
 main = Blueprint('main', __name__)

@@ -21,6 +21,8 @@ class User(UserMixin, db.Model):
         username (str): Unique username
         email (str): Unique email address
         password_hash (str): Hashed password
+        reset_token (str): Token for password reset
+        reset_token_expiry (datetime): Expiry time for reset token
         orders (list): List of orders made by the user
     """
 
@@ -28,6 +30,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
+    reset_token = db.Column(db.String(100), unique=True)
+    reset_token_expiry = db.Column(db.DateTime)
     orders = db.relationship('Order', backref='user', lazy=True)
 
     def __repr__(self):
