@@ -15,25 +15,16 @@ from flask import (
     Flask, render_template, request, redirect, url_for, flash,
     session, Blueprint, current_app
 )
-from flask_login import LoginManager, login_required, current_user
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
-from flask_cors import CORS
-from flask_wtf.csrf import CSRFProtect
-from flask_session import Session
+from flask_login import login_required, current_user
 
 # Local imports
 from models import db, User, Product, Order, OrderItem
 from config import Config
 from auth import auth as auth_blueprint
-
-# Initialize Flask extensions
-login_manager = LoginManager()
-limiter = Limiter(key_func=get_remote_address)
-talisman = Talisman()
-cors = CORS()
-csrf = CSRFProtect()
+from init_app import (
+    login_manager, limiter, talisman, cors, csrf, session,
+    create_app
+)
 
 # Create main blueprint
 main = Blueprint('main', __name__)
@@ -281,43 +272,6 @@ def order_detail(order_id):
         return redirect(url_for('main.index'))
     
     return render_template('order_detail.html', order=order)
-
-def create_app():
-    """
-    Create and configure the Flask application.
-    
-    Returns:
-        Flask: The configured Flask application instance
-    """
-    flask_app = Flask(__name__)
-    flask_app.config.from_object(Config)
-
-    # Initialize extensions
-    db.init_app(flask_app)
-    login_manager.init_app(flask_app)
-    limiter.init_app(flask_app)
-    talisman.init_app(flask_app)
-    cors.init_app(flask_app)
-    csrf.init_app(flask_app)
-    Session(flask_app)
-
-    # Configure logging
-    if not os.path.exists('logs'):
-        os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/ecommerce.log', maxBytes=10240, backupCount=10)
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-    ))
-    file_handler.setLevel(logging.INFO)
-    flask_app.logger.addHandler(file_handler)
-    flask_app.logger.setLevel(logging.INFO)
-    flask_app.logger.info('E-commerce startup')
-
-    # Register blueprints
-    flask_app.register_blueprint(main)
-    flask_app.register_blueprint(auth_blueprint)
-
-    return flask_app
 
 if __name__ == '__main__':
     app = create_app()
