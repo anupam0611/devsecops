@@ -67,6 +67,9 @@ jobs:
           soft-fail: false
           output-file-path: checkov-container-results.json
       
+      - name: Install dependencies
+        run: npm install js-yaml
+      
       - name: Run GitHub Actions Lint
         uses: actions/github-script@v6
         with:
