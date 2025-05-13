@@ -1,88 +1,90 @@
 """
 Application initialization module.
 
-This module handles the initialization and configuration of the Flask application,
-including database setup, extension initialization, and blueprint registration.
+This module handles the initialization of the Flask application,
+including database setup, extension configuration, and blueprint registration.
 """
 
+# Standard library imports
 import os
-import logging
-from logging.handlers import RotatingFileHandler
+from datetime import datetime
+
+# Third-party imports
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect
+from flask_session import Session
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
-from flask_migrate import Migrate
-from flask_session import Session
+from werkzeug.security import generate_password_hash
 
+# Local imports
 from config import Config
-from models import db, User, Product
-from routes import main as main_blueprint
-from auth import auth as auth_blueprint
+from models import User, Product
 
-# Initialize Flask extensions
+# Initialize extensions
 db = SQLAlchemy()
-login_manager = LoginManager()
-csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address)
-talisman = Talisman()
 migrate = Migrate()
+login_manager = LoginManager()
+session = Session()
+cors = CORS()
+limiter = Limiter(key_func=get_remote_address)
 
 @login_manager.user_loader
 def load_user(user_id):
-    """
-    Load a user from the database by ID.
-    
-    Args:
-        user_id: The ID of the user to load
-        
-    Returns:
-        User: The user object if found, None otherwise
-    """
+    """Load a user from the database by ID."""
     return User.query.get(int(user_id))
 
 def create_app(config_class=Config):
-    """
-    Create and configure the Flask application.
+    """Create and configure the Flask application.
     
     Args:
-        config_class: The configuration class to use
+        config_class: The configuration class to use.
         
     Returns:
-        Flask: The configured Flask application
+        Flask: The configured Flask application.
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    # Ensure the upload folder exists
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    
     # Initialize extensions
     db.init_app(app)
-    login_manager.init_app(app)
-    csrf.init_app(app)
-    limiter.init_app(app)
-    talisman.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+    session.init_app(app)
+    cors.init_app(app)
+    limiter.init_app(app)
     
     # Configure login manager
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'info'
     
-    # Configure session
-    Session(app)
-    
     # Register blueprints
-    app.register_blueprint(main_blueprint)
-    app.register_blueprint(auth_blueprint, url_prefix='/auth')
+    from routes import main as main_blueprint
+    from auth import auth as auth_blueprint
     
-    # Create database tables
+    app.register_blueprint(main_blueprint)
+    app.register_blueprint(auth_blueprint)
+    
+    # Create upload folder if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    
+    # Initialize database
     with app.app_context():
         db.create_all()
+        
+        # Create admin user if it doesn't exist
+        if not User.query.filter_by(email='admin@example.com').first():
+            admin = User(
+                email='admin@example.com',
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
     
     return app
 

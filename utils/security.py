@@ -1,131 +1,122 @@
 """
-Security utility functions for the e-commerce application.
+Security utilities for the e-commerce application.
 
-This module provides various security-related functions including:
-- Password validation
-- File upload security
-- Security event logging
-- HTTPS enforcement
-- CSRF protection
-- Input sanitization
+This module provides security-related functions for the application,
+including password validation, file upload security, and event logging.
 """
 
 import os
 import hashlib
-import functools
+import re
 from datetime import datetime
-from flask import request, redirect, url_for, flash, current_app, session
-from werkzeug.utils import secure_filename as werkzeug_secure_filename
+from functools import wraps
+from typing import Callable, Optional, Union
+from flask import request, current_app, session, redirect, url_for, flash
+from werkzeug.utils import secure_filename
 
-def validate_password(password):
-    """
-    Validate a password against security requirements.
+def validate_password(password: str) -> bool:
+    """Validate password strength.
     
     Args:
-        password (str): The password to validate
+        password (str): The password to validate.
         
     Returns:
-        tuple: (bool, str) - (is_valid, message)
-            - is_valid: True if password meets all requirements, False otherwise
-            - message: Description of validation result or error message
+        bool: True if password meets requirements, False otherwise.
     """
     if len(password) < 8:
-        return False, 'Password must be at least 8 characters.'
-    if not any(c.isdigit() for c in password):
-        return False, 'Password must contain a number.'
-    if not any(c.isupper() for c in password):
-        return False, 'Password must contain an uppercase letter.'
-    if not any(c.islower() for c in password):
-        return False, 'Password must contain a lowercase letter.'
-    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password):
-        return False, 'Password must contain a special character.'
-    return True, 'Password is valid.'
+        return False
+    
+    if not re.search(r'[A-Z]', password):
+        return False
+    
+    if not re.search(r'[a-z]', password):
+        return False
+    
+    if not re.search(r'\d', password):
+        return False
+    
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False
+    
+    return True
 
-def allowed_file(filename):
-    """
-    Check if a file has an allowed extension.
+def allowed_file(filename: str) -> bool:
+    """Check if a file has an allowed extension.
     
     Args:
-        filename (str): The name of the file to check
+        filename (str): The name of the file to check.
         
     Returns:
-        bool: True if the file extension is allowed, False otherwise
+        bool: True if file extension is allowed, False otherwise.
     """
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
-def secure_filename_with_hash(filename):
-    """
-    Create a secure filename with a hash to prevent filename collisions.
+def secure_filename_with_hash(filename: str) -> str:
+    """Generate a secure filename with a hash to prevent collisions.
     
     Args:
-        filename (str): The original filename to secure
+        filename (str): The original filename.
         
     Returns:
-        str: A secure version of the filename with a hash
+        str: A secure filename with a hash.
     """
-    # Get the secure base filename
-    secure_name = werkzeug_secure_filename(filename)
+    if not filename:
+        return ''
+    
+    # Get the file extension
+    ext = os.path.splitext(filename)[1]
     
     # Generate a hash of the original filename
-    name_hash = hashlib.md5(filename.encode()).hexdigest()[:8]
+    hash_value = hashlib.md5(filename.encode()).hexdigest()[:8]
     
-    # Split the filename into name and extension
-    name, ext = os.path.splitext(secure_name)
+    # Combine the hash with the original filename
+    secure_name = secure_filename(filename)
+    name_without_ext = os.path.splitext(secure_name)[0]
     
-    # Combine the secure name, hash, and extension
-    return f"{name}_{name_hash}{ext}"
+    return f"{name_without_ext}_{hash_value}{ext}"
 
-def log_security_event(event_type, message, user_id=None):
-    """
-    Log security-related events for auditing and monitoring.
+def log_security_event(event_type: str, message: str, user_id: Optional[int] = None) -> None:
+    """Log a security-related event.
     
     Args:
-        event_type (str): The type of security event (e.g., 'login', 'password_change')
-        message (str): A description of the event
-        user_id (int, optional): The ID of the user associated with the event
+        event_type (str): The type of security event.
+        message (str): The event message.
+        user_id (Optional[int]): The ID of the user involved, if any.
     """
     timestamp = datetime.utcnow().isoformat()
-    log_message = f"[{timestamp}] SECURITY EVENT: {event_type} - {message}"
+    log_message = f"[{timestamp}] {event_type}: {message}"
     if user_id:
-        log_message += f" (user_id={user_id})"
+        log_message += f" (User ID: {user_id})"
     
-    # Log to application logger
-    current_app.logger.warning(log_message)
-    
-    # Also print to console for development
-    if current_app.debug:
-        print(log_message)
+    current_app.logger.info(log_message)
 
-def require_https(f):
-    """
-    Decorator to ensure a route is only accessible via HTTPS.
+def require_https(f: Callable) -> Callable:
+    """Decorator to require HTTPS for a route.
     
     Args:
-        f (function): The route function to decorate
+        f (Callable): The route function to decorate.
         
     Returns:
-        function: The decorated function that checks for HTTPS
+        Callable: The decorated function.
     """
-    @functools.wraps(f)
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         if not request.is_secure and not current_app.debug:
-            flash('HTTPS is required for security.', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(request.url.replace('http://', 'https://'))
         return f(*args, **kwargs)
     return decorated_function
 
-def validate_csrf_token(f):
-    """
-    Decorator to validate CSRF tokens for POST requests.
+def validate_csrf_token(f: Callable) -> Callable:
+    """Decorator to validate CSRF token for a route.
     
     Args:
-        f (function): The route function to decorate
+        f (Callable): The route function to decorate.
         
     Returns:
-        function: The decorated function that validates CSRF tokens
+        Callable: The decorated function.
     """
-    @functools.wraps(f)
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         if request.method == 'POST':
             token = request.form.get('csrf_token')
@@ -135,24 +126,26 @@ def validate_csrf_token(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def sanitize_input(value):
-    """
-    Sanitize user input to prevent XSS and other injection attacks.
+def sanitize_input(text: str) -> str:
+    """Sanitize user input to prevent XSS attacks.
     
     Args:
-        value (str): The input value to sanitize
+        text (str): The text to sanitize.
         
     Returns:
-        str: The sanitized input value
+        str: The sanitized text.
     """
-    if not isinstance(value, str):
-        return value
+    if not text:
+        return ''
     
     # Remove HTML tags
-    value = value.replace('<', '&lt;').replace('>', '&gt;')
+    text = re.sub(r'<[^>]+>', '', text)
     
-    # Remove control characters
-    value = ''.join(char for char in value if ord(char) >= 32)
+    # Escape special characters
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    text = text.replace('"', '&quot;')
+    text = text.replace("'", '&#x27;')
     
-    # Strip whitespace
-    return value.strip()
+    return text

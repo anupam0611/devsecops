@@ -2,7 +2,7 @@
 Configuration module for the e-commerce application.
 
 This module defines configuration classes for different environments
-(development, testing, production) and their specific settings.
+(development, testing, production) with appropriate settings for each.
 """
 
 import os
@@ -41,7 +41,7 @@ class Config:
     }
     
     # CORS settings
-    CORS_ORIGINS = ['http://localhost:5000', 'https://yourdomain.com']
+    CORS_ORIGINS = ['http://localhost:3000', 'https://yourdomain.com']
     CORS_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
     CORS_HEADERS = ['Content-Type', 'Authorization']
     
@@ -62,22 +62,22 @@ class DevelopmentConfig(Config):
     """Development environment configuration."""
     DEBUG = True
     TESTING = False
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///dev.db'
+    SQLALCHEMY_ECHO = True
     SESSION_COOKIE_SECURE = False
 
 class TestingConfig(Config):
     """Testing environment configuration."""
     DEBUG = False
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
-    SESSION_COOKIE_SECURE = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
+    SESSION_COOKIE_SECURE = False
 
 class ProductionConfig(Config):
     """Production environment configuration."""
     DEBUG = False
     TESTING = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SQLALCHEMY_ECHO = False
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Strict'
