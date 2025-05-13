@@ -1,0 +1,326 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  FLASK_APP: app.py
+  FLASK_ENV: production
+  DOCKER_IMAGE: ${{ secrets.DOCKER_REGISTRY }}/devsecops-app:${{ github.sha }}
+
+jobs:
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Required for TruffleHog
+      
+      - name: Run TruffleHog for Secrets Scanning
+        uses: trufflesecurity/trufflehog@v3.30.0
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: |
+            --debug
+            --only-verified
+            --fail
+            --json
+            --entropy-threshold 4.5
+            --max-depth 1000
+            --branch ${{ github.ref }}
+      
+      - name: Run Checkov for Infrastructure Security
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: |
+            terraform
+            dockerfile
+          output: cli
+          quiet: true
+          skip-path: |
+            .git
+            .github
+            node_modules
+            venv
+          soft-fail: false
+          download-external-modules: true
+          compact: true
+          skip-check: |
+            CKV_AWS_130
+            CKV_AWS_126
+          output-file-path: checkov-results.json
+      
+      - name: Run Checkov for Container Scanning
+        uses: bridgecrewio/checkov-action@master
+        with:
+          image: ${{ env.DOCKER_IMAGE }}
+          framework: dockerfile
+          output: cli
+          quiet: true
+          soft-fail: false
+          output-file-path: checkov-container-results.json
+      
+      - name: Run GitHub Actions Security Scan
+        uses: s0md3v/actionlint@v1.6.26
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: true
+          shellcheck: true
+          pyflakes: true
+      
+      - name: Run Custom GitHub Actions Security Rules
+        run: |
+          # Install required tools
+          pip install yamllint
+          
+          # Create custom rules file
+          cat > .github/workflows/security-rules.yaml << 'EOL'
+          rules:
+            - id: no-plain-text-secrets
+              pattern: '(?i)(password|secret|token|key).*:.*["\']\w+["\']'
+              message: "Potential hardcoded secret detected"
+              severity: high
+              
+            - id: no-unsafe-permissions
+              pattern: 'permissions:.*write'
+              message: "Workflow has write permissions"
+              severity: medium
+              
+            - id: no-unsafe-env
+              pattern: 'env:.*GITHUB_TOKEN'
+              message: "Using GITHUB_TOKEN in environment variables"
+              severity: medium
+              
+            - id: no-unsafe-runner
+              pattern: 'runs-on:.*self-hosted'
+              message: "Using self-hosted runner"
+              severity: high
+              
+            - id: no-unsafe-actions
+              pattern: 'uses:.*@.*\d+\.\d+\.\d+'
+              message: "Using specific version of action"
+              severity: low
+          EOL
+          
+          # Run custom security scan
+          for workflow in .github/workflows/*.yml; do
+            echo "Scanning $workflow..."
+            yamllint -c .github/workflows/security-rules.yaml "$workflow"
+          done
+      
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            checkov-results.json
+            checkov-container-results.json
+          retention-days: 7
+      
+      - name: Comment PR with Security Findings
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const checkovResults = JSON.parse(fs.readFileSync('checkov-results.json', 'utf8'));
+            const containerResults = JSON.parse(fs.readFileSync('checkov-container-results.json', 'utf8'));
+            
+            let comment = '## Security Scan Results\n\n';
+            
+            // Add Checkov findings
+            comment += '### Infrastructure Security (Checkov)\n';
+            if (checkovResults.results.failed_checks.length > 0) {
+              comment += '❌ Found security issues:\n';
+              checkovResults.results.failed_checks.forEach(check => {
+                comment += `- ${check.check_name}: ${check.check_result.message}\n`;
+              });
+            } else {
+              comment += '✅ No security issues found\n';
+            }
+            
+            // Add Container findings
+            comment += '\n### Container Security (Checkov)\n';
+            if (containerResults.results.failed_checks.length > 0) {
+              comment += '❌ Found security issues:\n';
+              containerResults.results.failed_checks.forEach(check => {
+                comment += `- ${check.check_name}: ${check.check_result.message}\n`;
+              });
+            } else {
+              comment += '✅ No security issues found\n';
+            }
+            
+            // Add GitHub Actions findings
+            comment += '\n### GitHub Actions Security\n';
+            const actionlintOutput = process.env.ACTIONLINT_OUTPUT || '';
+            if (actionlintOutput) {
+              comment += '❌ Found security issues:\n';
+              comment += actionlintOutput;
+            } else {
+              comment += '✅ No security issues found\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pylint black pytest pytest-cov
+          pip install -r requirements.txt
+      
+      - name: Run Flake8
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+      - name: Run Pylint
+        run: pylint $(git ls-files '*.py')
+      
+      - name: Run Black
+        run: black . --check
+      
+      - name: Run Unit Tests with Coverage
+        run: |
+          pytest --cov=./ --cov-report=xml
+      
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+
+  build-and-scan:
+    name: Build and Scan Container
+    needs: [security-scan, code-quality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          tags: ${{ env.DOCKER_IMAGE }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/devsecops-app:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/devsecops-app:buildcache,mode=max
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-and-scan
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag ${{ env.DOCKER_IMAGE }} $ECR_REGISTRY/${{ env.DOCKER_IMAGE }}
+          docker push $ECR_REGISTRY/${{ env.DOCKER_IMAGE }}
+      
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster staging-cluster --service devsecops-service --force-new-deployment
+
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag ${{ env.DOCKER_IMAGE }} $ECR_REGISTRY/${{ env.DOCKER_IMAGE }}
+          docker push $ECR_REGISTRY/${{ env.DOCKER_IMAGE }}
+      
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster production-cluster --service devsecops-service --force-new-deployment
+      
+      - name: Run Post-deployment Tests
+        run: |
+          # Add your post-deployment tests here
+          echo "Running post-deployment tests..."
+      
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+  security-events: write 
