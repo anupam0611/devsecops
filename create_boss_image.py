@@ -1,55 +1,85 @@
-from PIL import Image, ImageDraw, ImageFont
-import os
+"""
+Image creation module for generating boss character images.
 
-def create_boss_speaker_image():
-    # Create a new image with a white background
-    width = 800
-    height = 600
-    image = Image.new('RGB', (width, height), 'white')
-    draw = ImageDraw.Draw(image)
+This module provides functionality to create and manipulate boss character
+images using PIL (Python Imaging Library).
+"""
+
+import os
+from PIL import Image, ImageDraw, ImageFont
+
+def create_boss_image(
+    name,
+    health,
+    attack,
+    defense,
+    output_path,
+    width=800,
+    height=600,
+    background_color=(50, 50, 50),
+    text_color=(255, 255, 255)
+):
+    """
+    Create a boss character image with stats.
     
-    # Draw a speaker shape
-    speaker_color = (50, 50, 50)  # Dark gray
-    speaker_width = 400
-    speaker_height = 300
-    speaker_x = (width - speaker_width) // 2
-    speaker_y = (height - speaker_height) // 2
+    Args:
+        name (str): Boss character name
+        health (int): Boss health points
+        attack (int): Boss attack power
+        defense (int): Boss defense power
+        output_path (str): Path to save the image
+        width (int): Image width in pixels
+        height (int): Image height in pixels
+        background_color (tuple): RGB background color
+        text_color (tuple): RGB text color
     
-    # Draw main speaker body
-    draw.rectangle(
-        [(speaker_x, speaker_y), (speaker_x + speaker_width, speaker_y + speaker_height)],
-        fill=speaker_color,
-        outline='black',
-        width=2
-    )
-    
-    # Draw speaker grille
-    grille_color = (30, 30, 30)
-    grille_spacing = 20
-    for x in range(speaker_x + 20, speaker_x + speaker_width - 20, grille_spacing):
-        for y in range(speaker_y + 20, speaker_y + speaker_height - 20, grille_spacing):
-            draw.ellipse(
-                [(x, y), (x + 10, y + 10)],
-                fill=grille_color
-            )
-    
-    # Add BOSS logo
+    Returns:
+        bool: True if image was created successfully, False otherwise
+    """
     try:
-        font = ImageFont.truetype("arial.ttf", 60)
-    except:
-        font = ImageFont.load_default()
-    
-    text = "BOSS"
-    text_color = (255, 255, 255)  # White
-    text_x = speaker_x + (speaker_width - draw.textlength(text, font=font)) // 2
-    text_y = speaker_y + speaker_height + 50
-    draw.text((text_x, text_y), text, fill=text_color, font=font)
-    
-    # Save the image
-    if not os.path.exists('static/uploads'):
-        os.makedirs('static/uploads')
-    image.save('static/uploads/boss_speaker.jpg', 'JPEG')
-    print("BOSS speaker image created successfully!")
+        # Create base image
+        image = Image.new('RGB', (width, height), background_color)
+        draw = ImageDraw.Draw(image)
+        
+        # Load font
+        font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'arial.ttf')
+        title_font = ImageFont.truetype(font_path, 40)
+        stats_font = ImageFont.truetype(font_path, 30)
+        
+        # Draw title
+        title = f"BOSS: {name}"
+        title_width = draw.textlength(title, font=title_font)
+        draw.text(
+            ((width - title_width) // 2, 50),
+            title,
+            font=title_font,
+            fill=text_color
+        )
+        
+        # Draw stats
+        stats = [
+            f"Health: {health}",
+            f"Attack: {attack}",
+            f"Defense: {defense}"
+        ]
+        
+        y_position = 150
+        for stat in stats:
+            draw.text(
+                (50, y_position),
+                stat,
+                font=stats_font,
+                fill=text_color
+            )
+            y_position += 50
+        
+        # Save image
+        image.save(output_path)
+        return True
+        
+    except Exception as e:
+        print(f"Error creating boss image: {str(e)}")
+        return False
 
 if __name__ == '__main__':
-    create_boss_speaker_image() 
+    create_boss_image() 

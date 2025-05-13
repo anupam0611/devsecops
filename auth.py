@@ -5,24 +5,23 @@ This module handles user authentication, including login, registration,
 password reset, and session management.
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import (
+    Blueprint, render_template, request, redirect, url_for,
+    flash, current_app, session
+)
 from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
 
 from models import db, User
-from utils.security import validate_password
+from utils.email import send_password_reset_email
+from utils.token import generate_token, validate_token
 
 # Create auth blueprint
 auth = Blueprint('auth', __name__)
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    Handle user login.
-    
-    GET: Display login form
-    POST: Process login form submission
-    """
+    """Handle user login."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
@@ -32,7 +31,7 @@ def login():
         remember = request.form.get('remember', False)
         
         user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
+        if user and check_password_hash(user.password_hash, password):
             login_user(user, remember=remember)
             next_page = request.args.get('next')
             return redirect(next_page or url_for('main.index'))
@@ -43,12 +42,7 @@ def login():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
-    """
-    Handle user registration.
-    
-    GET: Display registration form
-    POST: Process registration form submission
-    """
+    """Handle user registration."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
@@ -58,16 +52,12 @@ def register():
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('auth/register.html')
-        
         if password != confirm_password:
             flash('Passwords do not match', 'error')
             return render_template('auth/register.html')
         
-        if not validate_password(password):
-            flash('Password does not meet requirements', 'error')
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered', 'error')
             return render_template('auth/register.html')
         
         user = User(email=email, name=name)
@@ -85,48 +75,37 @@ def register():
 def logout():
     """Handle user logout."""
     logout_user()
-    flash('You have been logged out', 'info')
     return redirect(url_for('main.index'))
 
-@auth.route('/reset-password', methods=['GET', 'POST'])
+@auth.route('/reset_password_request', methods=['GET', 'POST'])
 def reset_password_request():
-    """
-    Handle password reset requests.
-    
-    GET: Display password reset request form
-    POST: Process password reset request
-    """
+    """Handle password reset requests."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
         email = request.form.get('email')
         user = User.query.filter_by(email=email).first()
-        
         if user:
-            # TODO: Implement password reset email functionality
-            flash('Password reset instructions have been sent to your email', 'info')
+            token = generate_token(user.email)
+            send_password_reset_email(user, token)
+            flash('Password reset instructions sent to your email', 'info')
             return redirect(url_for('auth.login'))
         
         flash('Email not found', 'error')
     
     return render_template('auth/reset_password_request.html')
 
-@auth.route('/reset-password/<token>', methods=['GET', 'POST'])
+@auth.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    """
-    Handle password reset.
-    
-    Args:
-        token (str): The password reset token
-        
-    GET: Display password reset form
-    POST: Process password reset form submission
-    """
+    """Handle password reset."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
-    # TODO: Implement token validation
+    if not validate_token(token):
+        flash('Invalid or expired token', 'error')
+        return redirect(url_for('auth.reset_password_request'))
+    
     if request.method == 'POST':
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
@@ -135,25 +114,21 @@ def reset_password(token):
             flash('Passwords do not match', 'error')
             return render_template('auth/reset_password.html')
         
-        if not validate_password(password):
-            flash('Password does not meet requirements', 'error')
-            return render_template('auth/reset_password.html')
+        user = User.query.filter_by(email=validate_token(token)).first()
+        if user:
+            user.set_password(password)
+            db.session.commit()
+            flash('Password has been reset', 'success')
+            return redirect(url_for('auth.login'))
         
-        # TODO: Update user password
-        flash('Your password has been reset', 'success')
-        return redirect(url_for('auth.login'))
+        flash('User not found', 'error')
     
     return render_template('auth/reset_password.html')
 
 @auth.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    """
-    Handle user profile management.
-    
-    GET: Display profile form
-    POST: Process profile form submission
-    """
+    """Handle user profile management."""
     if request.method == 'POST':
         name = request.form.get('name')
         current_password = request.form.get('current_password')
@@ -164,17 +139,13 @@ def profile():
             current_user.name = name
         
         if current_password and new_password:
-            if not current_user.check_password(current_password):
+            if not check_password_hash(current_user.password_hash, current_password):
                 flash('Current password is incorrect', 'error')
-                return render_template('auth/profile.html')
+                return redirect(url_for('auth.profile'))
             
             if new_password != confirm_password:
                 flash('New passwords do not match', 'error')
-                return render_template('auth/profile.html')
-            
-            if not validate_password(new_password):
-                flash('New password does not meet requirements', 'error')
-                return render_template('auth/profile.html')
+                return redirect(url_for('auth.profile'))
             
             current_user.set_password(new_password)
         

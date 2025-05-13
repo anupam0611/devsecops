@@ -1,37 +1,34 @@
 """
 Configuration module for the e-commerce application.
 
-This module defines the configuration classes for different environments
-(development, testing, production) and their respective settings.
+This module defines configuration classes for different environments
+(development, testing, production) and their specific settings.
 """
 
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from datetime import timedelta
 
 class Config:
     """
     Base configuration class with common settings.
     
-    This class defines the default configuration settings used across all
-    environments. Environment-specific settings can override these defaults.
+    This class contains settings that are common across all environments.
     """
-    
-    # Flask settings
+    # Basic Flask configuration
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///ecommerce.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Security settings
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    REMEMBER_COOKIE_SECURE = True
-    REMEMBER_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     
     # File upload settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
     
     # Content Security Policy
     CONTENT_SECURITY_POLICY = {
@@ -44,45 +41,46 @@ class Config:
     }
     
     # CORS settings
-    CORS_ORIGINS = ['https://yourdomain.com']
+    CORS_ORIGINS = ['http://localhost:5000', 'https://yourdomain.com']
+    CORS_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    CORS_HEADERS = ['Content-Type', 'Authorization']
     
     # Rate limiting
-    RATELIMIT_DEFAULT = "200 per day"
+    RATELIMIT_DEFAULT = "200 per day;50 per hour;10 per minute"
     RATELIMIT_STORAGE_URL = "memory://"
+    RATELIMIT_STRATEGY = "fixed-window"
     
-    # File upload configuration
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-    
-    # Security headers configuration
-    SECURITY_HEADERS = {
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'SAMEORIGIN',
-        'X-XSS-Protection': '1; mode=block',
-        'Content-Security-Policy': (
-            "default-src 'self'; "
-            "img-src 'self' data: https:; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
-        )
-    }
-    
-    # Session configuration
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes
-    
-    # Password policy
-    PASSWORD_MIN_LENGTH = 8
-    PASSWORD_REQUIRE_UPPER = True
-    PASSWORD_REQUIRE_LOWER = True
-    PASSWORD_REQUIRE_DIGIT = True
-    PASSWORD_REQUIRE_SPECIAL = True
-    
-    # Logging configuration
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE = 'app.log'
-    
-    REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    # Email settings
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', True)
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@yourdomain.com')
+
+class DevelopmentConfig(Config):
+    """Development environment configuration."""
+    DEBUG = True
+    TESTING = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///dev.db'
+    SESSION_COOKIE_SECURE = False
+
+class TestingConfig(Config):
+    """Testing environment configuration."""
+    DEBUG = False
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
+    SESSION_COOKIE_SECURE = False
+    WTF_CSRF_ENABLED = False
+
+class ProductionConfig(Config):
+    """Production environment configuration."""
+    DEBUG = False
+    TESTING = False
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Strict'
     
     def get_config(self):
         """

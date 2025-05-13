@@ -1,63 +1,29 @@
 """
 Main application module for the e-commerce platform.
 
-This module initializes and configures the Flask application with all necessary
-extensions and security features. It also defines all the routes and their handlers.
+This module contains the main application logic, including routes for
+product display, cart management, and order processing.
 """
 
-import os
-import logging
-from logging.handlers import RotatingFileHandler
 from decimal import Decimal
-
-# Third-party imports
 from flask import (
-    Flask, render_template, request, redirect, url_for, flash,
-    session, Blueprint, current_app
+    render_template, request, redirect, url_for, flash,
+    jsonify, session, current_app
 )
 from flask_login import login_required, current_user
 
-# Local imports
-from models import db, User, Product, Order, OrderItem
-from config import Config
-from auth import auth as auth_blueprint
-from init_app import (
-    login_manager, limiter, talisman, cors, csrf, session,
-    create_app
+from models import db, Product, Order, OrderItem
+from utils.cart import (
+    get_cart, get_cart_items, add_to_cart, update_cart_item,
+    remove_from_cart, clear_cart
 )
 
-# Create main blueprint
-main = Blueprint('main', __name__)
-
-@login_manager.user_loader
-def load_user(user_id):
-    """
-    Load a user from the database by ID.
-    
-    Args:
-        user_id (int): The user's ID
-        
-    Returns:
-        User: The user object if found, None otherwise
-    """
-    return User.query.get(int(user_id))
-
 def get_cart():
-    """
-    Get the current user's shopping cart from the session.
-    
-    Returns:
-        dict: The shopping cart dictionary
-    """
+    """Get the current user's shopping cart from the session."""
     return session.get('cart', {})
 
 def save_cart(cart_data):
-    """
-    Save the shopping cart to the session.
-    
-    Args:
-        cart_data (dict): The shopping cart dictionary to save
-    """
+    """Save the shopping cart to the session."""
     session['cart'] = cart_data
 
 @main.route('/')
@@ -86,27 +52,12 @@ def product_detail(product_id):
 @main.route('/cart')
 def cart():
     """Render the shopping cart page."""
-    cart_data = get_cart()
-    cart_items = []
-    total = Decimal('0.00')
-    
-    for product_id, quantity in cart_data.items():
-        product = Product.query.get(product_id)
-        if product and product.stock >= quantity:
-            cart_items.append({
-                'id': product.id,
-                'name': product.name,
-                'price': product.price,
-                'quantity': quantity,
-                'subtotal': product.price * quantity
-            })
-            total += Decimal(str(product.price * quantity))
-    
+    cart_items, total = get_cart_items()
     return render_template('cart.html', products=cart_items, total=total)
 
 @main.route('/add_to_cart/<int:product_id>', methods=['POST'])
 @login_required
-def add_to_cart(product_id):
+def add_to_cart_route(product_id):
     """
     Add a product to the shopping cart.
     
@@ -124,11 +75,10 @@ def add_to_cart(product_id):
             flash('Not enough stock available', 'error')
             return redirect(url_for('main.product_detail', product_id=product_id))
         
-        cart_data = get_cart()
-        cart_data[product_id] = cart_data.get(product_id, 0) + quantity
-        save_cart(cart_data)
-        
-        flash('Product added to cart', 'success')
+        if add_to_cart(product_id, quantity):
+            flash('Product added to cart', 'success')
+        else:
+            flash('Error adding product to cart', 'error')
     except (ValueError, KeyError) as e:
         current_app.logger.error('Error adding to cart: %s', str(e))
         flash('Error adding product to cart', 'error')
@@ -137,7 +87,7 @@ def add_to_cart(product_id):
 
 @main.route('/update_cart/<int:product_id>', methods=['POST'])
 @login_required
-def update_cart(product_id):
+def update_cart_route(product_id):
     """
     Update the quantity of a product in the cart.
     
@@ -150,18 +100,15 @@ def update_cart(product_id):
             flash('Invalid quantity', 'error')
             return redirect(url_for('main.cart'))
         
-        cart_data = get_cart()
-        if quantity == 0:
-            cart_data.pop(product_id, None)
-        else:
-            product = Product.query.get_or_404(product_id)
-            if product.stock < quantity:
-                flash('Not enough stock available', 'error')
-                return redirect(url_for('main.cart'))
-            cart_data[product_id] = quantity
+        product = Product.query.get_or_404(product_id)
+        if quantity > 0 and product.stock < quantity:
+            flash('Not enough stock available', 'error')
+            return redirect(url_for('main.cart'))
         
-        save_cart(cart_data)
-        flash('Cart updated', 'success')
+        if update_cart_item(product_id, quantity):
+            flash('Cart updated', 'success')
+        else:
+            flash('Error updating cart', 'error')
     except (ValueError, KeyError) as e:
         current_app.logger.error('Error updating cart: %s', str(e))
         flash('Error updating cart', 'error')
@@ -170,7 +117,7 @@ def update_cart(product_id):
 
 @main.route('/remove_from_cart/<int:product_id>', methods=['POST'])
 @login_required
-def remove_from_cart(product_id):
+def remove_from_cart_route(product_id):
     """
     Remove a product from the cart.
     
@@ -178,10 +125,10 @@ def remove_from_cart(product_id):
         product_id (int): The ID of the product to remove
     """
     try:
-        cart_data = get_cart()
-        cart_data.pop(product_id, None)
-        save_cart(cart_data)
-        flash('Product removed from cart', 'success')
+        if remove_from_cart(product_id):
+            flash('Product removed from cart', 'success')
+        else:
+            flash('Error removing product from cart', 'error')
     except KeyError as e:
         current_app.logger.error('Error removing from cart: %s', str(e))
         flash('Error removing product from cart', 'error')
@@ -220,7 +167,7 @@ def checkout():
                 product.stock -= quantity
             
             db.session.commit()
-            save_cart({})  # Clear cart
+            clear_cart()
             flash('Order placed successfully', 'success')
             return redirect(url_for('main.order_confirmation', order_id=order.id))
             
@@ -271,8 +218,4 @@ def order_detail(order_id):
         flash('Access denied', 'error')
         return redirect(url_for('main.index'))
     
-    return render_template('order_detail.html', order=order)
-
-if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True) 
+    return render_template('order_detail.html', order=order) 
