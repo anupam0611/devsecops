@@ -9,13 +9,12 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from decimal import Decimal
-from datetime import datetime, timedelta
 
 from flask import (
-    Flask, render_template, request, redirect, url_for, flash, 
-    jsonify, session, Blueprint, current_app
+    Flask, render_template, request, redirect, url_for, flash,
+    session, Blueprint, current_app
 )
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -59,26 +58,26 @@ def get_cart():
     """
     return session.get('cart', {})
 
-def save_cart(cart):
+def save_cart(cart_data):
     """
     Save the shopping cart to the session.
     
     Args:
-        cart (dict): The shopping cart dictionary to save
+        cart_data (dict): The shopping cart dictionary to save
     """
-    session['cart'] = cart
+    session['cart'] = cart_data
 
 @main.route('/')
 def index():
     """Render the home page with featured products."""
-    products = Product.query.filter_by(stock__gt=0).limit(8).all()
-    return render_template('index.html', products=products)
+    featured_products = Product.query.filter_by(stock__gt=0).limit(8).all()
+    return render_template('index.html', products=featured_products)
 
 @main.route('/products')
 def products():
     """Render the products page with all available products."""
-    products = Product.query.filter_by(stock__gt=0).all()
-    return render_template('products.html', products=products)
+    available_products = Product.query.filter_by(stock__gt=0).all()
+    return render_template('products.html', products=available_products)
 
 @main.route('/product/<int:product_id>')
 def product_detail(product_id):
@@ -94,14 +93,14 @@ def product_detail(product_id):
 @main.route('/cart')
 def cart():
     """Render the shopping cart page."""
-    cart = get_cart()
-    products = []
+    cart_data = get_cart()
+    cart_items = []
     total = Decimal('0.00')
     
-    for product_id, quantity in cart.items():
+    for product_id, quantity in cart_data.items():
         product = Product.query.get(product_id)
         if product and product.stock >= quantity:
-            products.append({
+            cart_items.append({
                 'id': product.id,
                 'name': product.name,
                 'price': product.price,
@@ -110,7 +109,7 @@ def cart():
             })
             total += Decimal(str(product.price * quantity))
     
-    return render_template('cart.html', products=products, total=total)
+    return render_template('cart.html', products=cart_items, total=total)
 
 @main.route('/add_to_cart/<int:product_id>', methods=['POST'])
 @login_required
@@ -132,11 +131,14 @@ def add_to_cart(product_id):
             flash('Not enough stock available', 'error')
             return redirect(url_for('main.product_detail', product_id=product_id))
         
-        cart = get_cart()
-        cart[product_id] = cart.get(product_id, 0) + quantity
-        save_cart(cart)
+        cart_data = get_cart()
+        cart_data[product_id] = cart_data.get(product_id, 0) + quantity
+        save_cart(cart_data)
         
         flash('Product added to cart', 'success')
+    except ValueError:
+        current_app.logger.error('Invalid quantity value')
+        flash('Invalid quantity', 'error')
     except Exception as e:
         current_app.logger.error('Error adding to cart: %s', str(e))
         flash('Error adding product to cart', 'error')
@@ -158,18 +160,21 @@ def update_cart(product_id):
             flash('Invalid quantity', 'error')
             return redirect(url_for('main.cart'))
         
-        cart = get_cart()
+        cart_data = get_cart()
         if quantity == 0:
-            cart.pop(product_id, None)
+            cart_data.pop(product_id, None)
         else:
             product = Product.query.get_or_404(product_id)
             if product.stock < quantity:
                 flash('Not enough stock available', 'error')
                 return redirect(url_for('main.cart'))
-            cart[product_id] = quantity
+            cart_data[product_id] = quantity
         
-        save_cart(cart)
+        save_cart(cart_data)
         flash('Cart updated', 'success')
+    except ValueError:
+        current_app.logger.error('Invalid quantity value')
+        flash('Invalid quantity', 'error')
     except Exception as e:
         current_app.logger.error('Error updating cart: %s', str(e))
         flash('Error updating cart', 'error')
@@ -186,9 +191,9 @@ def remove_from_cart(product_id):
         product_id (int): The ID of the product to remove
     """
     try:
-        cart = get_cart()
-        cart.pop(product_id, None)
-        save_cart(cart)
+        cart_data = get_cart()
+        cart_data.pop(product_id, None)
+        save_cart(cart_data)
         flash('Product removed from cart', 'success')
     except Exception as e:
         current_app.logger.error('Error removing from cart: %s', str(e))
@@ -202,8 +207,8 @@ def checkout():
     """Handle the checkout process."""
     if request.method == 'POST':
         try:
-            cart = get_cart()
-            if not cart:
+            cart_data = get_cart()
+            if not cart_data:
                 flash('Your cart is empty', 'error')
                 return redirect(url_for('main.cart'))
             
@@ -212,7 +217,7 @@ def checkout():
             db.session.add(order)
             
             # Create order items
-            for product_id, quantity in cart.items():
+            for product_id, quantity in cart_data.items():
                 product = Product.query.get_or_404(product_id)
                 if product.stock < quantity:
                     flash(f'Not enough stock for {product.name}', 'error')
@@ -260,8 +265,10 @@ def order_confirmation(order_id):
 @login_required
 def orders():
     """Display the user's order history."""
-    orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.date_ordered.desc()).all()
-    return render_template('orders.html', orders=orders)
+    user_orders = Order.query.filter_by(user_id=current_user.id).order_by(
+        Order.date_ordered.desc()
+    ).all()
+    return render_template('orders.html', orders=user_orders)
 
 @main.route('/order/<int:order_id>')
 @login_required
@@ -286,17 +293,17 @@ def create_app():
     Returns:
         Flask: The configured Flask application instance
     """
-    app = Flask(__name__)
-    app.config.from_object(Config)
+    flask_app = Flask(__name__)
+    flask_app.config.from_object(Config)
 
     # Initialize extensions
-    db.init_app(app)
-    login_manager.init_app(app)
-    limiter.init_app(app)
-    talisman.init_app(app)
-    cors.init_app(app)
-    csrf.init_app(app)
-    Session(app)
+    db.init_app(flask_app)
+    login_manager.init_app(flask_app)
+    limiter.init_app(flask_app)
+    talisman.init_app(flask_app)
+    cors.init_app(flask_app)
+    csrf.init_app(flask_app)
+    Session(flask_app)
 
     # Configure logging
     if not os.path.exists('logs'):
@@ -306,16 +313,16 @@ def create_app():
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
     file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
-    app.logger.info('E-commerce startup')
+    flask_app.logger.addHandler(file_handler)
+    flask_app.logger.setLevel(logging.INFO)
+    flask_app.logger.info('E-commerce startup')
 
     # Register blueprints
     from auth import auth as auth_blueprint
-    app.register_blueprint(main)
-    app.register_blueprint(auth_blueprint)
+    flask_app.register_blueprint(main)
+    flask_app.register_blueprint(auth_blueprint)
 
-    return app
+    return flask_app
 
 if __name__ == '__main__':
     app = create_app()
