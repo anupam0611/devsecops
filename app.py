@@ -7,7 +7,7 @@ product display, cart management, and order processing.
 
 from decimal import Decimal
 from flask import (
-    render_template, request, redirect, url_for, flash,
+    Blueprint, render_template, request, redirect, url_for, flash,
     jsonify, session, current_app
 )
 from flask_login import login_required, current_user
@@ -17,6 +17,9 @@ from utils.cart import (
     get_cart, get_cart_items, add_to_cart, update_cart_item,
     remove_from_cart, clear_cart
 )
+
+# Create main blueprint
+main = Blueprint('main', __name__)
 
 def get_cart():
     """Get the current user's shopping cart from the session."""
