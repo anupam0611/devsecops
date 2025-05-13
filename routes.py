@@ -1,216 +1,190 @@
 """
-Routes module for the e-commerce application.
+Route handlers for the e-commerce application.
 
-This module contains all the main routes and their handlers.
+This module contains all the route handlers for the application,
+including product display, cart management, and order processing.
 """
 
-from decimal import Decimal
+# Standard library imports
+from typing import List, Dict, Any, Optional
 
+# Third-party imports
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, current_app
+    flash, session, current_app
 )
 from flask_login import login_required, current_user
+from sqlalchemy.exc import SQLAlchemyError
 
-from models import db, Product, Order, OrderItem
+# Local imports
+from models import Product, Order, OrderItem
 from utils.cart import (
-    get_cart, get_cart_items, add_to_cart, update_cart_item,
+    get_cart_items, add_to_cart, update_cart_item,
     remove_from_cart, clear_cart
+)
+from utils.security import (
+    validate_csrf_token, require_https, log_security_event
 )
 
 # Create main blueprint
 main = Blueprint('main', __name__)
 
 @main.route('/')
-def index():
-    """Render the home page with featured products."""
-    featured_products = Product.query.filter_by(stock__gt=0).limit(8).all()
-    return render_template('index.html', products=featured_products)
-
-@main.route('/products')
-def products():
-    """Render the products page with all available products."""
-    available_products = Product.query.filter_by(stock__gt=0).all()
-    return render_template('products.html', products=available_products)
+def index() -> str:
+    """Display the home page with featured products."""
+    products = Product.query.filter_by(featured=True).all()
+    return render_template('index.html', products=products)
 
 @main.route('/product/<int:product_id>')
-def product_detail(product_id):
-    """
-    Render the product detail page.
-    
-    Args:
-        product_id (int): The ID of the product to display
-    """
+def product_detail(product_id: int) -> str:
+    """Display detailed information about a specific product."""
     product = Product.query.get_or_404(product_id)
     return render_template('product_detail.html', product=product)
 
 @main.route('/cart')
-def cart():
-    """Render the shopping cart page."""
-    cart_items, total = get_cart_items()
-    return render_template('cart.html', products=cart_items, total=total)
+@login_required
+def cart() -> str:
+    """Display the user's shopping cart."""
+    cart_items = get_cart_items()
+    total = sum(item['price'] * item['quantity'] for item in cart_items)
+    return render_template('cart.html', cart_items=cart_items, total=total)
 
 @main.route('/add_to_cart/<int:product_id>', methods=['POST'])
 @login_required
-def add_to_cart_route(product_id):
-    """
-    Add a product to the shopping cart.
-    
-    Args:
-        product_id (int): The ID of the product to add
-    """
+@validate_csrf_token
+def add_to_cart_route(product_id: int) -> str:
+    """Add a product to the user's shopping cart."""
     try:
-        quantity = int(request.form.get('quantity', 1))
-        if quantity < 1:
-            flash('Invalid quantity', 'error')
-            return redirect(url_for('main.product_detail', product_id=product_id))
-        
         product = Product.query.get_or_404(product_id)
-        if product.stock < quantity:
-            flash('Not enough stock available', 'error')
+        quantity = int(request.form.get('quantity', 1))
+        
+        if quantity <= 0:
+            flash('Invalid quantity.', 'error')
             return redirect(url_for('main.product_detail', product_id=product_id))
         
-        if add_to_cart(product_id, quantity):
-            flash('Product added to cart', 'success')
+        if add_to_cart(product, quantity):
+            flash('Product added to cart.', 'success')
         else:
-            flash('Error adding product to cart', 'error')
-    except (ValueError, KeyError) as e:
-        current_app.logger.error('Error adding to cart: %s', str(e))
-        flash('Error adding product to cart', 'error')
-    
-    return redirect(url_for('main.cart'))
+            flash('Failed to add product to cart.', 'error')
+        
+        return redirect(url_for('main.cart'))
+    except ValueError:
+        flash('Invalid quantity format.', 'error')
+        return redirect(url_for('main.product_detail', product_id=product_id))
+    except Exception as e:
+        current_app.logger.error(f'Error adding to cart: {str(e)}')
+        flash('An error occurred while adding to cart.', 'error')
+        return redirect(url_for('main.index'))
 
 @main.route('/update_cart/<int:product_id>', methods=['POST'])
 @login_required
-def update_cart_route(product_id):
-    """
-    Update the quantity of a product in the cart.
-    
-    Args:
-        product_id (int): The ID of the product to update
-    """
+@validate_csrf_token
+def update_cart_route(product_id: int) -> str:
+    """Update the quantity of a product in the cart."""
     try:
         quantity = int(request.form.get('quantity', 0))
-        if quantity < 0:
-            flash('Invalid quantity', 'error')
-            return redirect(url_for('main.cart'))
         
-        product = Product.query.get_or_404(product_id)
-        if quantity > 0 and product.stock < quantity:
-            flash('Not enough stock available', 'error')
-            return redirect(url_for('main.cart'))
-        
-        if update_cart_item(product_id, quantity):
-            flash('Cart updated', 'success')
+        if quantity <= 0:
+            if remove_from_cart(product_id):
+                flash('Product removed from cart.', 'success')
+            else:
+                flash('Failed to remove product from cart.', 'error')
         else:
-            flash('Error updating cart', 'error')
-    except (ValueError, KeyError) as e:
-        current_app.logger.error('Error updating cart: %s', str(e))
-        flash('Error updating cart', 'error')
-    
-    return redirect(url_for('main.cart'))
+            if update_cart_item(product_id, quantity):
+                flash('Cart updated.', 'success')
+            else:
+                flash('Failed to update cart.', 'error')
+        
+        return redirect(url_for('main.cart'))
+    except ValueError:
+        flash('Invalid quantity format.', 'error')
+        return redirect(url_for('main.cart'))
+    except Exception as e:
+        current_app.logger.error(f'Error updating cart: {str(e)}')
+        flash('An error occurred while updating cart.', 'error')
+        return redirect(url_for('main.index'))
 
 @main.route('/remove_from_cart/<int:product_id>', methods=['POST'])
 @login_required
-def remove_from_cart_route(product_id):
-    """
-    Remove a product from the cart.
-    
-    Args:
-        product_id (int): The ID of the product to remove
-    """
+@validate_csrf_token
+def remove_from_cart_route(product_id: int) -> str:
+    """Remove a product from the cart."""
     try:
         if remove_from_cart(product_id):
-            flash('Product removed from cart', 'success')
+            flash('Product removed from cart.', 'success')
         else:
-            flash('Error removing product from cart', 'error')
-    except KeyError as e:
-        current_app.logger.error('Error removing from cart: %s', str(e))
-        flash('Error removing product from cart', 'error')
-    
-    return redirect(url_for('main.cart'))
+            flash('Failed to remove product from cart.', 'error')
+        
+        return redirect(url_for('main.cart'))
+    except Exception as e:
+        current_app.logger.error(f'Error removing from cart: {str(e)}')
+        flash('An error occurred while removing from cart.', 'error')
+        return redirect(url_for('main.index'))
 
 @main.route('/checkout', methods=['GET', 'POST'])
 @login_required
-def checkout():
+@require_https
+@validate_csrf_token
+def checkout() -> str:
     """Handle the checkout process."""
     if request.method == 'POST':
         try:
-            cart_data = get_cart()
-            if not cart_data:
-                flash('Your cart is empty', 'error')
+            cart_items = get_cart_items()
+            if not cart_items:
+                flash('Your cart is empty.', 'error')
                 return redirect(url_for('main.cart'))
             
             # Create order
-            order = Order(user_id=current_user.id)
-            db.session.add(order)
+            order = Order(
+                user_id=current_user.id,
+                total=sum(item['price'] * item['quantity'] for item in cart_items)
+            )
+            current_app.db.session.add(order)
             
-            # Create order items
-            for product_id, quantity in cart_data.items():
-                product = Product.query.get_or_404(product_id)
-                if product.stock < quantity:
-                    flash(f'Not enough stock for {product.name}', 'error')
-                    return redirect(url_for('main.cart'))
-                
+            # Add order items
+            for item in cart_items:
                 order_item = OrderItem(
-                    order=order,
-                    product_id=product_id,
-                    quantity=quantity,
-                    price=product.price
+                    order_id=order.id,
+                    product_id=item['id'],
+                    quantity=item['quantity'],
+                    price=item['price']
                 )
-                db.session.add(order_item)
-                product.stock -= quantity
+                current_app.db.session.add(order_item)
             
-            db.session.commit()
-            clear_cart()  # Clear cart
-            flash('Order placed successfully', 'success')
+            current_app.db.session.commit()
+            clear_cart()
+            
+            log_security_event('order_placed', f'Order {order.id} placed successfully', current_user.id)
+            flash('Order placed successfully!', 'success')
             return redirect(url_for('main.order_confirmation', order_id=order.id))
             
-        except (ValueError, KeyError) as e:
-            db.session.rollback()
-            current_app.logger.error('Error during checkout: %s', str(e))
-            flash('Error processing your order', 'error')
+        except SQLAlchemyError as e:
+            current_app.db.session.rollback()
+            current_app.logger.error(f'Database error during checkout: {str(e)}')
+            log_security_event('checkout_error', f'Database error: {str(e)}', current_user.id)
+            flash('An error occurred during checkout. Please try again.', 'error')
+            return redirect(url_for('main.cart'))
+        except Exception as e:
+            current_app.db.session.rollback()
+            current_app.logger.error(f'Checkout error: {str(e)}')
+            log_security_event('checkout_error', str(e), current_user.id)
+            flash('An error occurred during checkout. Please try again.', 'error')
             return redirect(url_for('main.cart'))
     
-    return render_template('checkout.html')
+    return render_template('checkout.html', cart_items=get_cart_items())
 
 @main.route('/order_confirmation/<int:order_id>')
 @login_required
-def order_confirmation(order_id):
-    """
-    Display the order confirmation page.
-    
-    Args:
-        order_id (int): The ID of the order to display
-    """
-    order = Order.query.get_or_404(order_id)
-    if order.user_id != current_user.id:
-        flash('Access denied', 'error')
-        return redirect(url_for('main.index'))
-    
-    return render_template('order_confirmation.html', order=order)
-
-@main.route('/orders')
-@login_required
-def orders():
-    """Display the user's order history."""
-    user_orders = Order.query.filter_by(user_id=current_user.id).order_by(
-        Order.date_ordered.desc()
-    ).all()
-    return render_template('orders.html', orders=user_orders)
-
-@main.route('/order/<int:order_id>')
-@login_required
-def order_detail(order_id):
-    """
-    Display the details of a specific order.
-    
-    Args:
-        order_id (int): The ID of the order to display
-    """
-    order = Order.query.get_or_404(order_id)
-    if order.user_id != current_user.id:
-        flash('Access denied', 'error')
-        return redirect(url_for('main.index'))
-    
-    return render_template('order_detail.html', order=order) 
+def order_confirmation(order_id: int) -> str:
+    """Display order confirmation details."""
+    try:
+        order = Order.query.get_or_404(order_id)
+        if order.user_id != current_user.id:
+            log_security_event('unauthorized_access', f'Attempted access to order {order_id}', current_user.id)
+            flash('Access denied.', 'error')
+            return redirect(url_for('main.index'))
+        return render_template('order_confirmation.html', order=order)
+    except Exception as e:
+        current_app.logger.error(f'Error accessing order confirmation: {str(e)}')
+        flash('An error occurred while accessing order details.', 'error')
+        return redirect(url_for('main.index')) 

@@ -14,7 +14,7 @@ import os
 import hashlib
 import functools
 from datetime import datetime
-from flask import request, redirect, url_for, flash, current_app
+from flask import request, redirect, url_for, flash, current_app, session
 from werkzeug.utils import secure_filename as werkzeug_secure_filename
 
 def validate_password(password):
