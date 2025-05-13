@@ -5,7 +5,8 @@ load_dotenv()
 
 class Config:
     # Basic Flask configuration
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secure-secret-key-here'
+    WTF_CSRF_SECRET_KEY = os.environ.get('WTF_CSRF_SECRET_KEY') or 'your-csrf-secret-key-here'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///ecommerce.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -45,4 +46,6 @@ class Config:
     
     # Logging configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE = 'app.log' 
+    LOG_FILE = 'app.log'
+
+    REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0') 

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-6">
+            {% if product.image_url %}
+            <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                 class="img-fluid rounded" alt="{{ product.name }}">
+            {% else %}
+            <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                 style="height: 400px;">
+                <span class="text-muted">No image available</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <h1 class="mb-3">{{ product.name }}</h1>
+            <p class="lead">{{ product.description }}</p>
+            <p class="h3 text-primary mb-4">₹{{ "%.2f"|format(product.price * 83) }}</p>
+            
+            <div class="mb-4">
+                <span class="badge bg-{{ 'success' if product.stock > 0 else 'danger' }}">
+                    {{ 'In Stock' if product.stock > 0 else 'Out of Stock' }}
+                </span>
+                {% if product.stock > 0 %}
+                <small class="text-muted ms-2">{{ product.stock }} units available</small>
+                {% endif %}
+            </div>
+
+            {% if current_user.is_authenticated and product.stock > 0 %}
+            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}" class="mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label for="quantity" class="col-form-label">Quantity:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="number" id="quantity" name="quantity" class="form-control" 
+                               value="1" min="1" max="{{ product.stock }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Add to Cart</button>
+                    </div>
+                </div>
+            </form>
+            {% elif not current_user.is_authenticated %}
+            <div class="alert alert-info">
+                Please <a href="{{ url_for('login') }}">login</a> to add items to your cart.
+            </div>
+            {% endif %}
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Product Details</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Category:</strong> {{ product.category }}</li>
+                        <li><strong>SKU:</strong> {{ product.id }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

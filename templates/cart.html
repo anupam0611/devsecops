@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Shopping Cart</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-8">
+            {% if cart_items %}
+                {% for item in cart_items %}
+                <div class="card mb-3">
+                    <div class="row g-0">
+                        <div class="col-md-2">
+                            {% if item.product.image_url %}
+                            <img src="{{ url_for('static', filename='uploads/' + item.product.image_url) }}" 
+                                 class="img-fluid rounded-start" alt="{{ item.product.name }}"
+                                 style="height: 100%; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                <span class="text-muted">No image</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-10">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <h5 class="card-title">{{ item.product.name }}</h5>
+                                        <p class="card-text text-muted">{{ item.product.category }}</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <p class="card-text">₹{{ "%.2f"|format(item.product.price * 83) }}</p>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <form method="POST" action="{{ url_for('update_cart', item_id=item.product.id) }}" class="d-flex">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="quantity-wrapper">
+                                                <div class="quantity-control">
+                                                    <button type="button" class="quantity-btn" onclick="decrementQuantity(this)">−</button>
+                                                    <input type="number" name="quantity" value="{{ item.quantity }}" 
+                                                           min="1" max="{{ item.product.stock }}" 
+                                                           class="quantity-input"
+                                                           onchange="this.form.submit()">
+                                                    <button type="button" class="quantity-btn" onclick="incrementQuantity(this)">+</button>
+                                                </div>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary update-btn">Update</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <form method="POST" action="{{ url_for('remove_from_cart', item_id=item.product.id) }}" class="ms-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    Your cart is empty. <a href="{{ url_for('home') }}" class="alert-link">Continue shopping</a>
+                </div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Order Summary</h5>
+                    {% if cart_items %}
+                        {% for item in cart_items %}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ item.product.name }} x {{ item.quantity }}</span>
+                            <span>₹{{ "%.2f"|format(item.price * item.quantity * 83) }}</span>
+                        </div>
+                        {% endfor %}
+                        <hr>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal</span>
+                            <span>₹{{ "%.2f"|format(subtotal * 83) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>GST (18%)</span>
+                            <span>₹{{ "%.2f"|format(tax * 83) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total</strong>
+                            <strong>₹{{ "%.2f"|format(total * 83) }}</strong>
+                        </div>
+                        <div class="d-grid">
+                            <a href="{{ url_for('checkout') }}" class="btn btn-primary">Proceed to Checkout</a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No items in cart</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.quantity-control {
+    display: inline-flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    height: 32px;
+}
+
+.quantity-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    color: #495057;
+}
+
+.quantity-btn:hover {
+    background-color: #e9ecef;
+}
+
+.quantity-input {
+    width: 40px !important;
+    text-align: center;
+    border: none;
+    border-left: 1px solid #dee2e6;
+    border-right: 1px solid #dee2e6;
+    padding: 0;
+    height: 32px;
+    margin: 0;
+    background: transparent;
+}
+
+.quantity-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Hide number input spinners */
+.quantity-input::-webkit-inner-spin-button,
+.quantity-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.quantity-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.update-btn {
+    margin-left: 8px !important;
+    height: 32px;
+    padding: 0 10px;
+}
+
+.quantity-wrapper {
+    display: flex;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function incrementQuantity(button) {
+    const input = button.parentElement.querySelector('input[type="number"]');
+    const max = parseInt(input.getAttribute('max'));
+    const currentValue = parseInt(input.value);
+    if (currentValue < max) {
+        input.value = currentValue + 1;
+        input.dispatchEvent(new Event('change'));
+    }
+}
+
+function decrementQuantity(button) {
+    const input = button.parentElement.querySelector('input[type="number"]');
+    const min = parseInt(input.getAttribute('min'));
+    const currentValue = parseInt(input.value);
+    if (currentValue > min) {
+        input.value = currentValue - 1;
+        input.dispatchEvent(new Event('change'));
+    }
+}
+</script>
+{% endblock %} 
