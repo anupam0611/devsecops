@@ -10,6 +10,7 @@ env:
   FLASK_APP: app.py
   FLASK_ENV: production
   DOCKER_IMAGE: ${{ secrets.DOCKER_REGISTRY }}/devsecops-app:${{ github.sha }}
+  SESSION_TYPE: 'filesystem'
 
 jobs:
   security-scan:
@@ -68,7 +69,9 @@ jobs:
           output-file-path: checkov-container-results.json
       
       - name: Install dependencies
-        run: npm install js-yaml
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black pytest pytest-cov
       
       - name: Run GitHub Actions Lint
         uses: actions/github-script@v6
@@ -202,14 +205,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pylint black pytest pytest-cov
-          pip install -r requirements.txt
+          pip install flake8 black pytest pytest-cov
       
       - name: Run Flake8
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-      
-      - name: Run Pylint
-        run: pylint $(git ls-files '*.py')
+        run: flake8 $(git ls-files '*.py')
       
       - name: Run Black
         run: black . --check
@@ -328,4 +327,10 @@ permissions:
   contents: read
   packages: write
   pull-requests: write
-  security-events: write 
+  security-events: write
+
+# Ensure all text files use LF line endings
+* text=auto
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

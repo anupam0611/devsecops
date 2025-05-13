@@ -1,5 +1,4 @@
-"""
-Database models for the e-commerce application.
+"""Database models for the e-commerce application.
 
 This module defines the SQLAlchemy models for users, products, and orders.
 """
@@ -25,7 +24,6 @@ class User(UserMixin, db.Model):
         reset_token_expiry (datetime): Expiry time for reset token
         orders (list): List of orders made by the user
     """
-
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -80,7 +78,6 @@ class Product(db.Model):
         stock (int): Available stock quantity
         order_items (list): List of order items containing this product
     """
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
@@ -128,7 +125,6 @@ class Order(db.Model):
         status (str): Order status
         items (list): List of items in the order
     """
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date_ordered = db.Column(db.DateTime, default=datetime.utcnow)
@@ -175,7 +171,6 @@ class OrderItem(db.Model):
         quantity (int): Quantity of the product ordered
         price (float): Price of the product at time of order
     """
-
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
@@ -204,8 +199,11 @@ class OrderItem(db.Model):
 
         Returns:
             bool: True if quantity was updated, False if invalid quantity
+
+        Raises:
+            ValueError: If new_quantity is less than or equal to zero
         """
-        if new_quantity > 0:
-            self.quantity = new_quantity
-            return True
-        return False
+        if new_quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+        self.quantity = new_quantity
+        return True

@@ -1,58 +1,86 @@
 """
-Main application module for the e-commerce platform.
+Main application module.
 
-This module initializes the Flask application and defines the main routes
-for product display, cart management, and order processing.
+This module initializes the Flask application and its extensions,
+registers blueprints, and configures the application.
 """
 
 # Standard library imports
-import os
-from datetime import datetime
+from typing import Any
 
 # Third-party imports
-from flask import Flask
-from flask_login import LoginManager
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask_login import LoginManager
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_mail import Mail
 from flask_session import Session
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 # Local imports
-from config import Config
-from models import User, Product, Order, OrderItem
-from utils.security import (
-    allowed_file, secure_filename_with_hash, validate_password,
-    log_security_event
-)
+from app_config import Config
+from models import User
+from auth import auth as auth_blueprint
+from routes import main as main_blueprint
 
-def create_app(config_class=Config):
+# Initialize extensions
+db = SQLAlchemy()
+login_manager = LoginManager()
+session = Session()
+cors = CORS()
+limiter = Limiter(key_func=get_remote_address)
+mail = Mail()
+
+@login_manager.user_loader
+def load_user(user_id: int) -> User:
+    """Load a user from the database by ID.
+
+    Args:
+        user_id: The ID of the user to load.
+
+    Returns:
+        User: The loaded user object.
+    """
+    return User.query.get(int(user_id))
+
+def create_app(config_class: Any = Config) -> Flask:
     """Create and configure the Flask application.
-    
+
     Args:
         config_class: The configuration class to use.
-        
+
     Returns:
         Flask: The configured Flask application.
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
     # Initialize extensions
-    db = SQLAlchemy(app)
-    migrate = Migrate(app, db)
-    login_manager = LoginManager(app)
+    db.init_app(app)
+    login_manager.init_app(app)
+    session.init_app(app)
+    cors.init_app(app)
+    limiter.init_app(app)
+    mail.init_app(app)
+
+    # Configure login manager
     login_manager.login_view = 'auth.login'
-    Session(app)
-    
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
+
     # Register blueprints
-    from auth import auth as auth_blueprint
-    from routes import main as main_blueprint
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(main_blueprint)
-    
-    # Initialize database
-    with app.app_context():
-        db.create_all()
-    
-    return app 
+
+    # Define routes
+    @app.route('/')
+    def index():
+        """Render the index page."""
+        return render_template('index.html')
+
+    return app
+
+if __name__ == '__main__':
+    flask_app = create_app()
+    flask_app.run(debug=True)
