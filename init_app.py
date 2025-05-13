@@ -1,44 +1,78 @@
 """
 Application initialization module.
 
-This module handles the creation and configuration of the Flask application,
-including database setup, authentication, and blueprint registration.
+This module handles the initialization and configuration of the Flask application,
+including database setup, extension initialization, and blueprint registration.
 """
+
+import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from routes import main as main_blueprint
-from auth import auth as auth_blueprint
-from models import User, Product
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
+from flask_session import Session
 
+from config import Config
+
+# Initialize Flask extensions
 db = SQLAlchemy()
-login_manager = LoginManager()
 migrate = Migrate()
+login_manager = LoginManager()
+limiter = Limiter(key_func=get_remote_address)
+talisman = Talisman()
+cors = CORS()
+csrf = CSRFProtect()
 
-def create_app():
+def create_app(config_class=Config):
     """
     Create and configure the Flask application.
     
+    Args:
+        config_class: The configuration class to use
+        
     Returns:
         Flask: The configured Flask application instance
     """
-    flask_app = Flask(__name__)
-    flask_app.config['SECRET_KEY'] = 'your-secret-key'
-    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ecommerce.db'
-    flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app = Flask(__name__)
+    app.config.from_object(config_class)
 
-    db.init_app(flask_app)
-    login_manager.init_app(flask_app)
-    migrate.init_app(flask_app, db)
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    limiter.init_app(app)
+    talisman.init_app(app)
+    cors.init_app(app)
+    csrf.init_app(app)
+    Session(app)
 
-    login_manager.login_view = 'auth.login'
+    # Configure logging
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Application startup')
 
-    flask_app.register_blueprint(main_blueprint)
-    flask_app.register_blueprint(auth_blueprint)
+    # Register blueprints
+    from routes import main as main_blueprint
+    from auth import auth as auth_blueprint
+    app.register_blueprint(main_blueprint)
+    app.register_blueprint(auth_blueprint)
 
-    return flask_app
+    return app
 
 def init_db():
     """

@@ -10,6 +10,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from decimal import Decimal
 
+# Third-party imports
 from flask import (
     Flask, render_template, request, redirect, url_for, flash,
     session, Blueprint, current_app
@@ -22,9 +23,10 @@ from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
 
+# Local imports
+from auth import auth as auth_blueprint
 from models import db, User, Product, Order, OrderItem
 from config import Config
-from auth import auth as auth_blueprint
 
 # Initialize Flask extensions
 login_manager = LoginManager()
