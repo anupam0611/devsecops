@@ -81,8 +81,9 @@ jobs:
               const workflow = yaml.load(content);
               const issues = [];
               
-              // Check for hardcoded secrets
-              if (content.match(/(?i)(password|secret|token|key).*:.*["']\w+["']/)) {
+              // Check for hardcoded secrets using case-insensitive regex
+              const secretPattern = new RegExp('(password|secret|token|key).*:.*["\']\\w+["\']', 'i');
+              if (secretPattern.test(content)) {
                 issues.push('Potential hardcoded secret detected');
               }
               
