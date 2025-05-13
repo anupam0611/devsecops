@@ -21,6 +21,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
 
 from config import Config
+from models import User, Product
 
 # Initialize Flask extensions
 db = SQLAlchemy()
