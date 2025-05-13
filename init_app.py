@@ -1,35 +1,54 @@
+"""
+Application initialization module.
+
+This module handles the creation and configuration of the Flask application,
+including database setup, authentication, and blueprint registration.
+"""
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from app import app, db
 from models import User, Product
+from routes import main as main_blueprint
+from auth import auth as auth_blueprint
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 
 def create_app():
-    app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'your-secret-key'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ecommerce.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    """
+    Create and configure the Flask application.
+    
+    Returns:
+        Flask: The configured Flask application instance
+    """
+    flask_app = Flask(__name__)
+    flask_app.config['SECRET_KEY'] = 'your-secret-key'
+    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ecommerce.db'
+    flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    db.init_app(app)
-    login_manager.init_app(app)
-    migrate.init_app(app, db)
+    db.init_app(flask_app)
+    login_manager.init_app(flask_app)
+    migrate.init_app(flask_app, db)
 
     login_manager.login_view = 'auth.login'
 
-    from routes import main as main_blueprint
-    from auth import auth as auth_blueprint
+    flask_app.register_blueprint(main_blueprint)
+    flask_app.register_blueprint(auth_blueprint)
 
-    app.register_blueprint(main_blueprint)
-    app.register_blueprint(auth_blueprint)
-
-    return app
+    return flask_app
 
 def init_db():
+    """
+    Initialize the database with required tables and initial data.
+    
+    This function creates all database tables and populates them with
+    initial data if they don't exist.
+    """
+    app = create_app()
     with app.app_context():
         # Create all database tables
         db.create_all()
