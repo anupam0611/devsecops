@@ -9,6 +9,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+# Third-party imports
 from flask import Flask
 from flask_login import LoginManager
 from flask_limiter import Limiter
@@ -16,12 +17,15 @@ from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
-from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_session import Session
 
+# Local imports
 from config import Config
 from models import User, Product
+from routes import main as main_blueprint
+from auth import auth as auth_blueprint
 
 # Initialize Flask extensions
 db = SQLAlchemy()
@@ -82,8 +86,6 @@ def create_app(config_class=Config):
     flask_app.logger.info('E-commerce startup')
 
     # Register blueprints
-    from routes import main as main_blueprint
-    from auth import auth as auth_blueprint
     flask_app.register_blueprint(main_blueprint)
     flask_app.register_blueprint(auth_blueprint)
 
