@@ -149,22 +149,22 @@ jobs:
             // Add Container findings
             comment += '\n### Container Security (Checkov)\n';
             if (containerResults.results.failed_checks.length > 0) {
-              comment += '❌ Found security issues:\n';
+              comment += 'Found security issues:\n';
               containerResults.results.failed_checks.forEach(check => {
                 comment += `- ${check.check_name}: ${check.check_result.message}\n`;
               });
             } else {
-              comment += '✅ No security issues found\n';
+              comment += 'No security issues found\n';
             }
             
             // Add GitHub Actions findings
             comment += '\n### GitHub Actions Security\n';
             const actionlintOutput = process.env.ACTIONLINT_OUTPUT || '';
             if (actionlintOutput) {
-              comment += '❌ Found security issues:\n';
+              comment += 'Found security issues:\n';
               comment += actionlintOutput;
             } else {
-              comment += '✅ No security issues found\n';
+              comment += 'No security issues found\n';
             }
             
             github.rest.issues.createComment({
