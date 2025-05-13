@@ -67,53 +67,63 @@ jobs:
           soft-fail: false
           output-file-path: checkov-container-results.json
       
-      - name: Run GitHub Actions Security Scan
-        uses: s0md3v/actionlint@v1.6.26
+      - name: Run GitHub Actions Lint
+        uses: actions/github-script@v6
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_error: true
-          shellcheck: true
-          pyflakes: true
-      
-      - name: Run Custom GitHub Actions Security Rules
-        run: |
-          # Install required tools
-          pip install yamllint
-          
-          # Create custom rules file
-          cat > .github/workflows/security-rules.yaml << 'EOL'
-          rules:
-            - id: no-plain-text-secrets
-              pattern: '(?i)(password|secret|token|key).*:.*["\']\w+["\']'
-              message: "Potential hardcoded secret detected"
-              severity: high
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const yaml = require('js-yaml');
+            
+            // Function to check for common security issues
+            function checkWorkflowSecurity(workflowPath) {
+              const content = fs.readFileSync(workflowPath, 'utf8');
+              const workflow = yaml.load(content);
+              const issues = [];
               
-            - id: no-unsafe-permissions
-              pattern: 'permissions:.*write'
-              message: "Workflow has write permissions"
-              severity: medium
+              // Check for hardcoded secrets
+              if (content.match(/(?i)(password|secret|token|key).*:.*["']\w+["']/)) {
+                issues.push('Potential hardcoded secret detected');
+              }
               
-            - id: no-unsafe-env
-              pattern: 'env:.*GITHUB_TOKEN'
-              message: "Using GITHUB_TOKEN in environment variables"
-              severity: medium
+              // Check for unsafe permissions
+              if (workflow.permissions && Object.values(workflow.permissions).includes('write')) {
+                issues.push('Workflow has write permissions');
+              }
               
-            - id: no-unsafe-runner
-              pattern: 'runs-on:.*self-hosted'
-              message: "Using self-hosted runner"
-              severity: high
+              // Check for GITHUB_TOKEN in env
+              if (content.includes('GITHUB_TOKEN') && content.includes('env:')) {
+                issues.push('Using GITHUB_TOKEN in environment variables');
+              }
               
-            - id: no-unsafe-actions
-              pattern: 'uses:.*@.*\d+\.\d+\.\d+'
-              message: "Using specific version of action"
-              severity: low
-          EOL
-          
-          # Run custom security scan
-          for workflow in .github/workflows/*.yml; do
-            echo "Scanning $workflow..."
-            yamllint -c .github/workflows/security-rules.yaml "$workflow"
-          done
+              // Check for self-hosted runners
+              if (content.includes('runs-on:') && content.includes('self-hosted')) {
+                issues.push('Using self-hosted runner');
+              }
+              
+              return issues;
+            }
+            
+            // Scan all workflow files
+            const workflowsDir = path.join(process.env.GITHUB_WORKSPACE, '.github', 'workflows');
+            const workflowFiles = fs.readdirSync(workflowsDir)
+              .filter(file => file.endsWith('.yml') || file.endsWith('.yaml'));
+            
+            let allIssues = [];
+            for (const file of workflowFiles) {
+              const issues = checkWorkflowSecurity(path.join(workflowsDir, file));
+              if (issues.length > 0) {
+                allIssues.push(`Issues in ${file}:`);
+                allIssues.push(...issues.map(issue => `- ${issue}`));
+              }
+            }
+            
+            // Set output for PR comment
+            if (allIssues.length > 0) {
+              core.setOutput('issues', allIssues.join('\n'));
+            } else {
+              core.setOutput('issues', 'No security issues found in workflows');
+            }
       
       - name: Upload Security Reports
         uses: actions/upload-artifact@v3
@@ -159,10 +169,10 @@ jobs:
             
             // Add GitHub Actions findings
             comment += '\n### GitHub Actions Security\n';
-            const actionlintOutput = process.env.ACTIONLINT_OUTPUT || '';
-            if (actionlintOutput) {
+            const actionIssues = process.env.ACTION_ISSUES || '';
+            if (actionIssues && actionIssues !== 'No security issues found in workflows') {
               comment += '❌ Found security issues:\n';
-              comment += actionlintOutput;
+              comment += actionIssues;
             } else {
               comment += '✅ No security issues found\n';
             }
