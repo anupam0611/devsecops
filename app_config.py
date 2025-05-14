@@ -6,6 +6,7 @@ This module defines configuration classes for different environments:
 - Testing: Test database, debug mode enabled
 - Production: Production settings, secure defaults
 """
+# pylint: disable=too-few-public-methods
 
 import os
 from datetime import timedelta
