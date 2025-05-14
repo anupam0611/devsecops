@@ -192,9 +192,3 @@ permissions:
   packages: write
   pull-requests: write
   security-events: write
-
-# Ensure all text files use LF line endings
-* text=auto
-*.py text eol=lf
-*.yml text eol=lf
-*.yaml text eol=lf
