@@ -204,6 +204,7 @@ def remove_from_cart_route(product_id: int) -> Response:
 # Routes
 # ============================================================================
 
+
 @main.route("/checkout", methods=["GET", "POST"])
 @login_required
 @require_https
