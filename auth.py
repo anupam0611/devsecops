@@ -97,9 +97,7 @@ def register():
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during registration: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during registration: {str(e)}")
             flash("An error occurred during registration.", "error")
 
     return render_template("auth/register.html")
@@ -138,10 +136,7 @@ def reset_password_request():
                 current_app.mail.send_message(
                     "Password Reset Request",
                     recipients=[user.email],
-                    body=(
-                        f"To reset your password, visit the following link:\n"
-                        f"{reset_url}"
-                    ),
+                    body=(f"To reset your password, visit the following link:\n" f"{reset_url}"),
                 )
                 log_security_event(
                     "password_reset_request",
@@ -155,9 +150,7 @@ def reset_password_request():
                 return redirect(url_for("auth.login"))
 
             except smtplib.SMTPException as e:
-                current_app.logger.error(
-                    f"SMTP error while sending reset email: {str(e)}"
-                )
+                current_app.logger.error(f"SMTP error while sending reset email: {str(e)}")
                 flash(
                     "Error sending reset email. Please try again.",
                     "error",
@@ -203,9 +196,7 @@ def reset_password(token):
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during password reset: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during password reset: {str(e)}")
             flash("An error occurred during password reset.", "error")
 
     return render_template("auth/reset_password.html")

@@ -37,7 +37,7 @@ def download_boss_image(image_id, timeout=30):
         response.raise_for_status()
 
         # Save image
-        with open(output_path, 'wb') as f:
+        with open(output_path, "wb") as f:
             f.write(response.content)
 
         return True
