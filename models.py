@@ -45,7 +45,9 @@ class User(UserMixin, db.Model):
         Args:
             password (str): The plain text password to hash
         """
-        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+        self.password_hash = bcrypt.generate_password_hash(password).decode(
+            "utf-8"
+        )
 
     def check_password(self, password):
         """
@@ -160,7 +162,13 @@ class Order(db.Model):
         Returns:
             bool: True if status was updated, False if invalid status
         """
-        valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
+        valid_statuses = [
+            "pending",
+            "processing",
+            "shipped",
+            "delivered",
+            "cancelled",
+        ]
         if new_status in valid_statuses:
             self.status = new_status
             return True
@@ -181,7 +189,9 @@ class OrderItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    product_id = db.Column(
+        db.Integer, db.ForeignKey("product.id"), nullable=False
+    )
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 

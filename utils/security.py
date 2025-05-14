@@ -48,7 +48,8 @@ def allowed_file(filename: str) -> bool:
     """
     return (
         "." in filename
-        and filename.rsplit(".", 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
+        and filename.rsplit(".", 1)[1].lower()
+        in current_app.config["ALLOWED_EXTENSIONS"]
     )
 
 
@@ -73,7 +74,9 @@ def secure_filename_with_hash(filename: str) -> str:
     return f"{name_without_ext}_{hash_value}{ext}"
 
 
-def log_security_event(event_type: str, message: str, user_id: Optional[int] = None) -> None:
+def log_security_event(
+    event_type: str, message: str, user_id: Optional[int] = None
+) -> None:
     """Log a security-related event.
 
     Args:

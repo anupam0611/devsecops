@@ -6,6 +6,7 @@ This module defines configuration classes for different environments:
 - Testing: Test database, debug mode enabled
 - Production: Production settings, secure defaults
 """
+
 # pylint: disable=too-few-public-methods
 
 import os
@@ -16,7 +17,9 @@ class BaseConfig:
     """Base configuration class with common settings."""
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key"
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
