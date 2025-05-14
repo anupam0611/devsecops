@@ -46,9 +46,7 @@ from utils.security import (
 app = Flask(__name__)
 
 # Configure database URI
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    "sqlite:///some_very_long_database_path.db"
-)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///some_very_long_database_path.db"
 
 # Create main blueprint
 main = Blueprint("main", __name__)
@@ -119,9 +117,7 @@ def add_to_cart_route(product_id: int) -> Response:
 
         if quantity <= 0:
             flash("Invalid quantity.", "error")
-            return redirect(
-                url_for("main.product_detail", product_id=product_id)
-            )
+            return redirect(url_for("main.product_detail", product_id=product_id))
 
         if add_to_cart(product, quantity):
             flash("Product added to cart.", "success")
@@ -194,9 +190,7 @@ def remove_from_cart_route(product_id: int) -> Response:
 
         return redirect(url_for("main.cart"))
     except SQLAlchemyError as e:
-        current_app.logger.error(
-            f"Database error removing from cart: {str(e)}"
-        )
+        current_app.logger.error(f"Database error removing from cart: {str(e)}")
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
 
@@ -226,9 +220,7 @@ def checkout() -> Union[str, Response]:
             # Create order
             order = Order(
                 user_id=current_user.id,
-                total=sum(
-                    item["price"] * item["quantity"] for item in cart_items
-                ),
+                total=sum(item["price"] * item["quantity"] for item in cart_items),
             )
             current_app.db.session.add(order)
 
@@ -260,15 +252,11 @@ def checkout() -> Union[str, Response]:
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during checkout: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during checkout: {str(e)}")
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
             )
-            flash(
-                "An error occurred during checkout. Please try again.", "error"
-            )
+            flash("An error occurred during checkout. Please try again.", "error")
             return redirect(url_for("main.cart"))
 
     return render_template("checkout.html", cart_items=get_cart_items())
@@ -297,8 +285,6 @@ def order_confirmation(order_id: int) -> Union[str, Response]:
             return redirect(url_for("main.index"))
         return render_template("order_confirmation.html", order=order)
     except SQLAlchemyError as e:
-        current_app.logger.error(
-            f"Error accessing order confirmation: {str(e)}"
-        )
+        current_app.logger.error(f"Error accessing order confirmation: {str(e)}")
         flash("An error occurred while accessing order details.", "error")
         return redirect(url_for("main.index"))
