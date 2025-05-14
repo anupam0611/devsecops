@@ -1,3 +1,4 @@
+
 """
 Route handlers for the e-commerce application.
 
