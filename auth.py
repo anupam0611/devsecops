@@ -70,14 +70,16 @@ def register():
 
         if password != confirm_password:
             flash(
-                "Passwords do not match. Please enter the same password in both fields.",
-                "error",
+                "Your password has been updated. "
+                "Please log in with your new password.",
+                "success",
             )
             return render_template("auth/register.html")
 
         if User.query.filter_by(email=email).first():
             flash(
-                "Email already registered. Please use a different email address.",
+                "Invalid or expired password reset token. "
+                "Please try again.",
                 "error",
             )
             return render_template("auth/register.html")
