@@ -40,6 +40,11 @@ from utils.security import validate_csrf_token, require_https, log_security_even
 # Create main blueprint
 main = Blueprint("main", __name__)
 
+# Configure database URI
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    "sqlite:///some_very_long_database_path.db"
+)
+
 # ============================================================================
 # Product Display Routes
 # ============================================================================
