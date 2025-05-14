@@ -32,6 +32,7 @@ cors = CORS()
 limiter = Limiter(key_func=get_remote_address)
 mail = Mail()
 
+
 @login_manager.user_loader
 def load_user(user_id: int) -> User:
     """Load a user from the database by ID.
@@ -43,6 +44,7 @@ def load_user(user_id: int) -> User:
         User: The loaded user object.
     """
     return User.query.get(int(user_id))
+
 
 def create_app(config_class: Any = Config) -> Flask:
     """Create and configure the Flask application.
@@ -65,22 +67,23 @@ def create_app(config_class: Any = Config) -> Flask:
     mail.init_app(app)
 
     # Configure login manager
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access this page.'
-    login_manager.login_message_category = 'info'
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "info"
 
     # Register blueprints
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(main_blueprint)
 
     # Define routes
-    @app.route('/')
+    @app.route("/")
     def index():
         """Render the index page."""
-        return render_template('index.html')
+        return render_template("index.html")
 
     return app
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     flask_app = create_app()
     flask_app.run(debug=True)

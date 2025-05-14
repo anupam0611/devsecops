@@ -26,11 +26,11 @@ def validate_password(password: str) -> bool:
     """
     if len(password) < 8:
         return False
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         return False
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         return False
-    if not re.search(r'\d', password):
+    if not re.search(r"\d", password):
         return False
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return False
@@ -46,8 +46,11 @@ def allowed_file(filename: str) -> bool:
     Returns:
         bool: True if file extension is allowed, False otherwise.
     """
-    return '.' in filename and filename.rsplit(
-        '.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower()
+        in current_app.config["ALLOWED_EXTENSIONS"]
+    )
 
 
 def secure_filename_with_hash(filename: str) -> str:
@@ -60,7 +63,7 @@ def secure_filename_with_hash(filename: str) -> str:
         str: A secure filename with a hash.
     """
     if not filename:
-        return ''
+        return ""
     # Get the file extension
     ext = os.path.splitext(filename)[1]
     # Generate a hash of the original filename
@@ -72,9 +75,8 @@ def secure_filename_with_hash(filename: str) -> str:
 
 
 def log_security_event(
-        event_type: str,
-        message: str,
-        user_id: Optional[int] = None) -> None:
+    event_type: str, message: str, user_id: Optional[int] = None
+) -> None:
     """Log a security-related event.
 
     Args:
@@ -98,11 +100,13 @@ def require_https(f: Callable) -> Callable:
     Returns:
         Callable: The decorated function.
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not request.is_secure and not current_app.debug:
-            return redirect(request.url.replace('http://', 'https://'))
+            return redirect(request.url.replace("http://", "https://"))
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -115,14 +119,16 @@ def validate_csrf_token(f: Callable) -> Callable:
     Returns:
         Callable: The decorated function.
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if request.method == 'POST':
-            token = request.form.get('csrf_token')
-            if not token or token != session.get('csrf_token'):
-                flash('Invalid CSRF token.', 'error')
-                return redirect(url_for('main.index'))
+        if request.method == "POST":
+            token = request.form.get("csrf_token")
+            if not token or token != session.get("csrf_token"):
+                flash("Invalid CSRF token.", "error")
+                return redirect(url_for("main.index"))
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -136,13 +142,13 @@ def sanitize_input(text: str) -> str:
         str: The sanitized text.
     """
     if not text:
-        return ''
+        return ""
     # Remove HTML tags
-    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"<[^>]+>", "", text)
     # Escape special characters
-    text = text.replace('&', '&amp;')
-    text = text.replace('<', '&lt;')
-    text = text.replace('>', '&gt;')
-    text = text.replace('"', '&quot;')
-    text = text.replace("'", '&#x27;')
+    text = text.replace("&", "&amp;")
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
+    text = text.replace('"', "&quot;")
+    text = text.replace("'", "&#x27;")
     return text

@@ -11,6 +11,7 @@ from flask_bcrypt import Bcrypt
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
+
 class User(UserMixin, db.Model):
     """
     User model representing registered users in the system.
@@ -24,17 +25,18 @@ class User(UserMixin, db.Model):
         reset_token_expiry (datetime): Expiry time for reset token
         orders (list): List of orders made by the user
     """
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     reset_token = db.Column(db.String(100), unique=True)
     reset_token_expiry = db.Column(db.DateTime)
-    orders = db.relationship('Order', backref='user', lazy=True)
+    orders = db.relationship("Order", backref="user", lazy=True)
 
     def __repr__(self):
         """Return a string representation of the user."""
-        return f'<User {self.username}>'
+        return f"<User {self.username}>"
 
     def set_password(self, password):
         """
@@ -43,7 +45,7 @@ class User(UserMixin, db.Model):
         Args:
             password (str): The plain text password to hash
         """
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
 
     def check_password(self, password):
         """
@@ -64,7 +66,8 @@ class User(UserMixin, db.Model):
         Returns:
             list: List of active Order objects
         """
-        return Order.query.filter_by(user_id=self.id, status='active').all()
+        return Order.query.filter_by(user_id=self.id, status="active").all()
+
 
 class Product(db.Model):
     """
@@ -78,16 +81,17 @@ class Product(db.Model):
         stock (int): Available stock quantity
         order_items (list): List of order items containing this product
     """
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, default=0)
-    order_items = db.relationship('OrderItem', backref='product', lazy=True)
+    order_items = db.relationship("OrderItem", backref="product", lazy=True)
 
     def __repr__(self):
         """Return a string representation of the product."""
-        return f'<Product {self.name}>'
+        return f"<Product {self.name}>"
 
     def update_stock(self, quantity):
         """
@@ -114,6 +118,7 @@ class Product(db.Model):
         """
         return self.stock > 0
 
+
 class Order(db.Model):
     """
     Order model representing customer purchases.
@@ -125,15 +130,16 @@ class Order(db.Model):
         status (str): Order status
         items (list): List of items in the order
     """
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     date_ordered = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='pending')
-    items = db.relationship('OrderItem', backref='order', lazy=True)
+    status = db.Column(db.String(20), default="pending")
+    items = db.relationship("OrderItem", backref="order", lazy=True)
 
     def __repr__(self):
         """Return a string representation of the order."""
-        return f'<Order {self.id}>'
+        return f"<Order {self.id}>"
 
     def get_total(self):
         """
@@ -154,11 +160,12 @@ class Order(db.Model):
         Returns:
             bool: True if status was updated, False if invalid status
         """
-        valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+        valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
         if new_status in valid_statuses:
             self.status = new_status
             return True
         return False
+
 
 class OrderItem(db.Model):
     """
@@ -171,15 +178,16 @@ class OrderItem(db.Model):
         quantity (int): Quantity of the product ordered
         price (float): Price of the product at time of order
     """
+
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 
     def __repr__(self):
         """Return a string representation of the order item."""
-        return f'<OrderItem {self.id}>'
+        return f"<OrderItem {self.id}>"
 
     def get_subtotal(self):
         """

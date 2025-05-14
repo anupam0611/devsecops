@@ -35,10 +35,12 @@ cors = CORS()
 limiter = Limiter(key_func=get_remote_address)
 mail = Mail()
 
+
 @login_manager.user_loader
 def load_user(user_id):
     """Load a user from the database by ID."""
     return User.query.get(int(user_id))
+
 
 def create_app(config_class=Config):
     """Create and configure the Flask application.
@@ -62,32 +64,33 @@ def create_app(config_class=Config):
     mail.init_app(app)
 
     # Configure login manager
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access this page.'
-    login_manager.login_message_category = 'info'
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "info"
 
     # Register blueprints
     app.register_blueprint(main_blueprint)
     app.register_blueprint(auth_blueprint)
 
     # Create upload folder if it doesn't exist
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     # Initialize database
     with app.app_context():
         db.create_all()
 
         # Create admin user if it doesn't exist
-        if not User.query.filter_by(email='admin@example.com').first():
+        if not User.query.filter_by(email="admin@example.com").first():
             admin = User(
-                email='admin@example.com',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
+                email="admin@example.com",
+                password_hash=generate_password_hash("admin123"),
+                is_admin=True,
             )
             db.session.add(admin)
             db.session.commit()
 
     return app
+
 
 def init_db():
     """
@@ -102,40 +105,37 @@ def init_db():
         db.create_all()
 
         # Create admin user if not exists
-        admin = User.query.filter_by(email='admin@example.com').first()
+        admin = User.query.filter_by(email="admin@example.com").first()
         if not admin:
-            admin = User(
-                email='admin@example.com',
-                name='Admin User',
-                is_admin=True
-            )
-            admin.set_password('Admin@123')  # Change this in production
+            admin = User(email="admin@example.com", name="Admin User", is_admin=True)
+            admin.set_password("Admin@123")  # Change this in production
             db.session.add(admin)
 
         # Add sample products if none exist
         if not Product.query.first():
             products = [
                 Product(
-                    name='Sample Product 1',
-                    description='This is a sample product description',
+                    name="Sample Product 1",
+                    description="This is a sample product description",
                     price=99.99,
                     stock=100,
-                    category='Electronics'
+                    category="Electronics",
                 ),
                 Product(
-                    name='Sample Product 2',
-                    description='Another sample product description',
+                    name="Sample Product 2",
+                    description="Another sample product description",
                     price=149.99,
                     stock=50,
-                    category='Clothing'
-                )
+                    category="Clothing",
+                ),
             ]
             db.session.add_all(products)
 
         db.session.commit()
         print("Database initialized successfully!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     init_db()
 
 # Add a final newline at the end of the file

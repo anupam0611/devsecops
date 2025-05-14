@@ -17,7 +17,7 @@ def get_cart() -> Dict:
     Returns:
         Dict: The current cart dictionary.
     """
-    return session.get('cart', {})
+    return session.get("cart", {})
 
 
 def save_cart(cart: Dict) -> None:
@@ -26,7 +26,7 @@ def save_cart(cart: Dict) -> None:
     Args:
         cart (Dict): The cart dictionary to save.
     """
-    session['cart'] = cart
+    session["cart"] = cart
 
 
 def get_cart_items() -> List[Dict]:
@@ -41,13 +41,15 @@ def get_cart_items() -> List[Dict]:
     for product_id, quantity in cart.items():
         product = Product.query.get(product_id)
         if product:
-            items.append({
-                'id': product.id,
-                'name': product.name,
-                'price': product.price,
-                'quantity': quantity,
-                'image': product.image
-            })
+            items.append(
+                {
+                    "id": product.id,
+                    "name": product.name,
+                    "price": product.price,
+                    "quantity": quantity,
+                    "image": product.image,
+                }
+            )
 
     return items
 
@@ -74,7 +76,7 @@ def add_to_cart(product: Product, quantity: int) -> bool:
         save_cart(cart)
         return True
     except (SQLAlchemyError, ValueError, TypeError):
-        session['cart'] = get_cart()  # Restore cart on error
+        session["cart"] = get_cart()  # Restore cart on error
         return False
 
 
@@ -98,7 +100,7 @@ def update_cart_item(product_id: int, quantity: int) -> bool:
             return True
         return False
     except (SQLAlchemyError, ValueError, TypeError):
-        session['cart'] = get_cart()  # Restore cart on error
+        session["cart"] = get_cart()  # Restore cart on error
         return False
 
 
@@ -121,7 +123,7 @@ def remove_from_cart(product_id: int) -> bool:
             return True
         return False
     except (SQLAlchemyError, ValueError, TypeError):
-        session['cart'] = get_cart()  # Restore cart on error
+        session["cart"] = get_cart()  # Restore cart on error
         return False
 
 
@@ -137,4 +139,4 @@ def get_cart_total() -> float:
         float: The total cost of all items in the cart.
     """
     items = get_cart_items()
-    return sum(item['price'] * item['quantity'] for item in items)
+    return sum(item["price"] * item["quantity"] for item in items)
