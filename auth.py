@@ -93,8 +93,9 @@ def register():
                 "registration", f"New user registered: {email}", user.id
             )
             flash(
-                "Registration successful. Please log in to access your account.",
-                "success",
+                "Registration successful. Please log in to access your "
+                "account.",
+                "success"
             )
             return redirect(url_for("auth.login"))
 
