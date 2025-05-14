@@ -179,7 +179,10 @@ def remove_from_cart_route(product_id: int) -> Response:
 
         return redirect(url_for("main.cart"))
     except SQLAlchemyError as e:
-        current_app.logger.error(f"Database error removing from cart: {str(e)}")
+        current_app.logger.error(
+            f"Database error removing from cart: {
+                str(e)}"
+        )
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
 
@@ -227,14 +230,25 @@ def checkout() -> Union[str, Response]:
             clear_cart()
 
             log_security_event(
-                "order_placed", f"Order {order.id} placed successfully", current_user.id
+                "order_placed",
+                f"Order {
+                    order.id} placed successfully",
+                current_user.id,
             )
             flash("Order placed successfully!", "success")
-            return redirect(url_for("main.order_confirmation", order_id=order.id))
+            return redirect(
+                url_for(
+                    "main.order_confirmation",
+                    order_id=order.id,
+                )
+            )
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during checkout: {str(e)}")
+            current_app.logger.error(
+                f"Database error during checkout: {
+                    str(e)}"
+            )
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
             )
@@ -267,6 +281,9 @@ def order_confirmation(order_id: int) -> Union[str, Response]:
             return redirect(url_for("main.index"))
         return render_template("order_confirmation.html", order=order)
     except SQLAlchemyError as e:
-        current_app.logger.error(f"Error accessing order confirmation: {str(e)}")
+        current_app.logger.error(
+            f"Error accessing order confirmation: {
+                str(e)}"
+        )
         flash("An error occurred while accessing order details.", "error")
         return redirect(url_for("main.index"))
