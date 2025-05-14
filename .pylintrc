@@ -330,6 +330,7 @@ overgeneral-exceptions=builtins.BaseException,builtins.Exception
 
 
 [FORMAT]
+max-line-length=150
 
 # Expected format of line ending, e.g. empty (any line ending), LF or CRLF.
 expected-line-ending-format=
@@ -345,7 +346,7 @@ indent-after-paren=4
 indent-string='    '
 
 # Maximum number of characters on a single line.
-max-line-length=100
+
 
 # Maximum number of lines in a module.
 max-module-lines=1000
