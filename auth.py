@@ -76,13 +76,17 @@ def register():
             current_app.db.session.add(user)
             current_app.db.session.commit()
 
-            log_security_event("registration", f"New user registered: {email}", user.id)
+            log_security_event(
+                "registration", f"New user registered: {email}", user.id
+            )
             flash("Registration successful. Please log in.", "success")
             return redirect(url_for("auth.login"))
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during registration: {str(e)}")
+            current_app.logger.error(
+                f"Database error during registration: {str(e)}"
+            )
             flash("An error occurred during registration.", "error")
 
     return render_template("auth/register.html")
@@ -92,7 +96,9 @@ def register():
 @login_required
 def logout():
     """Handle user logout."""
-    log_security_event("logout", f"User {current_user.id} logged out", current_user.id)
+    log_security_event(
+        "logout", f"User {current_user.id} logged out", current_user.id
+    )
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("main.index"))
@@ -116,10 +122,14 @@ def reset_password_request():
                 current_app.mail.send_message(
                     "Password Reset Request",
                     recipients=[user.email],
-                    body=f"To reset your password, visit the following link:\n{reset_url}",
+                    body=(
+                        f"To reset your password, visit the following link:\n{reset_url}"
+                    ),
                 )
                 log_security_event(
-                    "password_reset_request", f"Reset requested for {email}", user.id
+                    "password_reset_request", 
+                    f"Reset requested for {email}", 
+                    user.id
                 )
                 flash("Password reset instructions sent to your email.", "info")
                 return redirect(url_for("auth.login"))
@@ -163,7 +173,9 @@ def reset_password(token):
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during password reset: {str(e)}")
+            current_app.logger.error(
+                f"Database error during password reset: {str(e)}"
+            )
             flash("An error occurred during password reset.", "error")
 
     return render_template("auth/reset_password.html")

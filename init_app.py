@@ -107,7 +107,11 @@ def init_db():
         # Create admin user if not exists
         admin = User.query.filter_by(email="admin@example.com").first()
         if not admin:
-            admin = User(email="admin@example.com", name="Admin User", is_admin=True)
+            admin = User(
+                email="admin@example.com", 
+                name="Admin User", 
+                is_admin=True
+            )
             admin.set_password("Admin@123")  # Change this in production
             db.session.add(admin)
 
