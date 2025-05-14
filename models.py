@@ -103,7 +103,8 @@ class Product(db.Model):
             quantity (int): The quantity to add (positive) or remove (negative)
 
         Returns:
-            bool: True if update was successful, False if resulting stock would be negative
+            bool: True if update was successful, False if resulting stock would
+            be negative
         """
         new_stock = self.stock + quantity
         if new_stock >= 0:
@@ -188,8 +189,12 @@ class OrderItem(db.Model):
     """
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    order_id = db.Column(
+        db.Integer, db.ForeignKey("order.id"), nullable=False
+    )
+    product_id = db.Column(
+        db.Integer, db.ForeignKey("product.id"), nullable=False
+    )
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 
