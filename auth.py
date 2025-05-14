@@ -98,8 +98,7 @@ def register():
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
             current_app.logger.error(
-                f"Database error during registration: {
-                    str(e)}"
+                f"Database error during registration: {str(e)}"
             )
             flash("An error occurred during registration.", "error")
 
