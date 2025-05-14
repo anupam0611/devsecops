@@ -190,7 +190,10 @@ def reset_password(token):
         confirm_password = request.form.get("confirm_password")
 
         if password != confirm_password:
-            flash("Passwords do not match.", "error")
+            flash(
+                "Passwords do not match.",
+                "error",
+            )
             return render_template("auth/reset_password.html")
 
         try:
@@ -212,6 +215,9 @@ def reset_password(token):
             current_app.logger.error(
                 f"Database error during password reset: {str(e)}"
             )
-            flash("An error occurred during password reset.", "error")
+            flash(
+                "An error occurred during password reset.",
+                "error",
+            )
 
     return render_template("auth/reset_password.html")
