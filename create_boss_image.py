@@ -1,7 +1,7 @@
 """Image creation module for generating boss character images.
 
 This module provides functionality to create and manipulate boss character
-images using PIL (Python Imaging Library).
+images using PIL (Python Imaging Library)..
 """
 
 import os
