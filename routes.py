@@ -213,7 +213,8 @@ def checkout() -> Union[str, Response]:
     """Handle the checkout process.
 
     Returns:
-        Union[str, Response]: Rendered template for checkout page or redirect response.
+        Union[str, Response]: Rendered template for the checkout page,
+            or a redirect response on form submission.
     """
     if request.method == "POST":
         try:
