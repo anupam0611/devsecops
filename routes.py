@@ -225,7 +225,11 @@ def checkout() -> Union[str, Response]:
             # Create order
             order = Order(
                 user_id=current_user.id,
-                total=sum(item["price"] * item["quantity"] for item in cart_items),
+                total = sum(
+                    item["price"] * item["quantity"]
+                    for item in cart_items
+                ),
+
             )
             current_app.db.session.add(order)
 
