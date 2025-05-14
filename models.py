@@ -87,6 +87,7 @@ class Product(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, default=0)
+    featured = db.Column(db.Boolean, default=False)
     order_items = db.relationship("OrderItem", backref="product", lazy=True)
 
     def __repr__(self):
