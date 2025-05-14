@@ -45,9 +45,7 @@ class User(UserMixin, db.Model):
         Args:
             password (str): The plain text password to hash
         """
-        self.password_hash = bcrypt.generate_password_hash(password).decode(
-            "utf-8"
-        )
+        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
 
     def check_password(self, password):
         """
@@ -189,12 +187,8 @@ class OrderItem(db.Model):
     """
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(
-        db.Integer, db.ForeignKey("order.id"), nullable=False
-    )
-    product_id = db.Column(
-        db.Integer, db.ForeignKey("product.id"), nullable=False
-    )
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 

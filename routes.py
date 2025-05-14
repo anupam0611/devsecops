@@ -46,9 +46,7 @@ from utils.security import (
 app = Flask(__name__)
 
 # Configure database URI
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    "sqlite:///some_very_long_database_path.db"
-)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///some_very_long_database_path.db"
 
 # Create main blueprint
 main = Blueprint("main", __name__)
@@ -119,9 +117,7 @@ def add_to_cart_route(product_id: int) -> Response:
 
         if quantity <= 0:
             flash("Invalid quantity.", "error")
-            return redirect(
-                url_for("main.product_detail", product_id=product_id)
-            )
+            return redirect(url_for("main.product_detail", product_id=product_id))
         if add_to_cart(product, quantity):
             flash("Product added to cart.", "success")
         else:
@@ -193,11 +189,10 @@ def remove_from_cart_route(product_id: int) -> Response:
 
         return redirect(url_for("main.cart"))
     except SQLAlchemyError as e:
-        current_app.logger.error(
-            f"Database error removing from cart: {str(e)}"
-        )
+        current_app.logger.error(f"Database error removing from cart: {str(e)}")
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
+
 
 # ============================================================================
 # Order Processing
@@ -224,10 +219,7 @@ def checkout() -> Union[str, Response]:
                 return redirect(url_for("main.cart"))
 
             # Create order
-            total_price = sum(
-                item["price"] * item["quantity"]
-                for item in cart_items
-            )
+            total_price = sum(item["price"] * item["quantity"] for item in cart_items)
             order = Order(
                 user_id=current_user.id,
                 total=total_price,
@@ -262,16 +254,11 @@ def checkout() -> Union[str, Response]:
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during checkout: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during checkout: {str(e)}")
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
             )
-            flash(
-                "An error occurred during checkout. Please try again.",
-                "error"
-            )
+            flash("An error occurred during checkout. Please try again.", "error")
 
             return redirect(url_for("main.cart"))
 

@@ -77,8 +77,7 @@ def register():
 
         if User.query.filter_by(email=email).first():
             flash(
-                "Invalid or expired password reset token. "
-                "Please try again.",
+                "Invalid or expired password reset token. " + "Please try again.",
                 "error",
             )
             return render_template("auth/register.html")
@@ -89,21 +88,16 @@ def register():
             current_app.db.session.add(user)
             current_app.db.session.commit()
 
-            log_security_event(
-                "registration", f"New user registered: {email}", user.id
-            )
+            log_security_event("registration", f"New user registered: {email}", user.id)
             flash(
-                "Registration successful. Please log in to access your "
-                "account.",
-                "success"
+                "Registration successful. Please log in to access your account.",
+                "success",
             )
             return redirect(url_for("auth.login"))
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during registration: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during registration: {str(e)}")
             flash("An error occurred during registration.", "error")
 
     return render_template("auth/register.html")
@@ -136,9 +130,7 @@ def reset_password_request():
 
         if user:
             token = user.generate_reset_token()
-            reset_url = url_for(
-                "auth.reset_password", token=token, _external=True
-            )
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
 
             try:
                 current_app.mail.send_message(
@@ -205,17 +197,14 @@ def reset_password(token):
                 user.id,
             )
             flash(
-                "Your password has been reset successfully. "
-                "You can now log in.",
+                "Your password has been reset successfully. You can now log in.",
                 "success",
             )
             return redirect(url_for("auth.login"))
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(
-                f"Database error during password reset: {str(e)}"
-            )
+            current_app.logger.error(f"Database error during password reset: {str(e)}")
             flash(
                 "An error occurred during password reset.",
                 "error",
