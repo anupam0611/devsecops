@@ -199,12 +199,10 @@ def remove_from_cart_route(product_id: int) -> Response:
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
 
-
-
 # ============================================================================
-# Order Processing Routes
+# Order Processing
+# Routes
 # ============================================================================
-
 
 @main.route("/checkout", methods=["GET", "POST"])
 @login_required
@@ -215,7 +213,7 @@ def checkout() -> Union[str, Response]:
 
     Returns:
         Union[str, Response]: Rendered template for checkout page or redirect response.
-    """
+        """
     if request.method == "POST":
         try:
             cart_items = get_cart_items()
@@ -258,39 +256,15 @@ def checkout() -> Union[str, Response]:
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during checkout: {str(e)}")
+            current_app.logger.error(
+                f"Database error during checkout: {str(e)}"
+            )
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
             )
             flash("An error occurred during checkout. Please try again.", "error")
             return redirect(url_for("main.cart"))
 
-    return render_template("checkout.html", cart_items=get_cart_items())
-
-
-@main.route("/order_confirmation/<int:order_id>")
-@login_required
-def order_confirmation(order_id: int) -> Union[str, Response]:
-    """Display order confirmation details.
-
-    Args:
-        order_id (int): The ID of the order to display.
-
-    Returns:
-        Union[str, Response]: Rendered template for order confirmation or redirect response.
-    """
-    try:
-        order = Order.query.get_or_404(order_id)
-        if order.user_id != current_user.id:
-            log_security_event(
-                "unauthorized_access",
-                f"Attempted access to order {order_id}",
-                current_user.id,
-            )
-            flash("Access denied.", "error")
-            return redirect(url_for("main.index"))
-        return render_template("order_confirmation.html", order=order)
-    except SQLAlchemyError as e:
-        current_app.logger.error(f"Error accessing order confirmation: {str(e)}")
-        flash("An error occurred while accessing order details.", "error")
-        return redirect(url_for("main.index"))
+    else:
+        # This part will only be reached if the request method is not POST
+        return render_template("checkout.html", cart_items=get_cart_items())
