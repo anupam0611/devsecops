@@ -204,8 +204,7 @@ def reset_password(token):
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
             current_app.logger.error(
-                f"Database error during password reset: {
-                    str(e)}"
+                f"Database error during password reset: {str(e)}"
             )
             flash("An error occurred during password reset.", "error")
 
