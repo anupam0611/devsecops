@@ -139,6 +139,10 @@ jobs:
         run: |
           docker run -d --rm --name devsecops-staging -p 5000:5000 devsecops-app:staging
 
+      - name: Add Access Link to Job Summary
+        run: echo "[Staging App Link](http://localhost:5000)" >> $GITHUB_STEP_SUMMARY
+
+
   deploy-production:
     name: Deploy to Production
     needs: deploy-staging
