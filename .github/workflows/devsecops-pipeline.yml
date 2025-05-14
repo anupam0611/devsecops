@@ -124,35 +124,20 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   deploy-staging:
-    name: Deploy to Staging
+    name: Deploy Locally (Staging)
     needs: build-and-scan
     runs-on: ubuntu-latest
     environment: staging
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-      
-      - name: Push to ECR
-        env:
-          ECR_IMAGE: ${{ steps.login-ecr.outputs.registry }}/devsecops-app:${{ github.sha }}
-        run: |
-          docker tag ${{ env.DOCKER_IMAGE }} ${{ env.ECR_IMAGE }}
-          docker push ${{ env.ECR_IMAGE }}
 
-      
-      - name: Deploy to ECS
+      - name: Build Docker Image for Staging
         run: |
-          aws ecs update-service --cluster staging-cluster --service devsecops-service --force-new-deployment
+          docker build -t devsecops-app:staging .
+
+      - name: Run Docker Container (Staging)
+        run: |
+          docker run -d --rm --name devsecops-staging -p 5000:5000 devsecops-app:staging
 
   deploy-production:
     name: Deploy to Production
