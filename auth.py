@@ -97,7 +97,10 @@ def register():
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during registration: {str(e)}")
+            current_app.logger.error(
+                f"Database error during registration: {
+                    str(e)}"
+            )
             flash("An error occurred during registration.", "error")
 
     return render_template("auth/register.html")
@@ -107,7 +110,12 @@ def register():
 @login_required
 def logout():
     """Handle user logout."""
-    log_security_event("logout", f"User {current_user.id} logged out", current_user.id)
+    log_security_event(
+        "logout",
+        f"User {
+            current_user.id} logged out",
+        current_user.id,
+    )
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("main.index"))
@@ -148,7 +156,9 @@ def reset_password_request():
                 return redirect(url_for("auth.login"))
 
             except smtplib.SMTPException as e:
-                current_app.logger.error(f"SMTP error while sending reset email: {str(e)}")
+                current_app.logger.error(
+                    f"SMTP error while sending reset email: {str(e)}"
+                )
                 flash(
                     "Error sending reset email. Please try again.",
                     "error",
@@ -182,7 +192,9 @@ def reset_password(token):
             user.set_password(password)
             current_app.db.session.commit()
             log_security_event(
-                "password_reset", f"Password reset for {user.email}", user.id
+                "password_reset",
+                f"Password reset for {user.email}",
+                user.id,
             )
             flash(
                 "Your password has been reset successfully. You can now log in.",
@@ -192,7 +204,10 @@ def reset_password(token):
 
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during password reset: {str(e)}")
+            current_app.logger.error(
+                f"Database error during password reset: {
+                    str(e)}"
+            )
             flash("An error occurred during password reset.", "error")
 
     return render_template("auth/reset_password.html")
