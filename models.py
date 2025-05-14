@@ -57,9 +57,7 @@ class User(UserMixin, db.Model):
         Returns:
             bool: True if password matches, False otherwise
         """
-        return bcrypt.check_password_hash(
-            self.password_hash, password
-        )
+        return bcrypt.check_password_hash(self.password_hash, password)
 
     def get_active_orders(self):
         """
@@ -162,9 +160,7 @@ class Order(db.Model):
         Returns:
             bool: True if status was updated, False if invalid status
         """
-        valid_statuses = [
-            "pending", "processing", "shipped", "delivered", "cancelled"
-        ]
+        valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
         if new_status in valid_statuses:
             self.status = new_status
             return True
