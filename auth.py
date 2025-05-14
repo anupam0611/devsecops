@@ -111,10 +111,10 @@ def logout():
     """Handle user logout."""
     log_security_event(
         "logout",
-        f"User {
-            current_user.id} logged out",
+        f"User {current_user.id} logged out",
         current_user.id,
     )
+
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("main.index"))
