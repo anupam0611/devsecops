@@ -208,12 +208,13 @@ def remove_from_cart_route(product_id: int) -> Response:
 @login_required
 @require_https
 @validate_csrf_token
+
 def checkout() -> Union[str, Response]:
     """Handle the checkout process.
 
     Returns:
         Union[str, Response]: Rendered template for checkout page or redirect response.
-        """
+    """
     if request.method == "POST":
         try:
             cart_items = get_cart_items()
