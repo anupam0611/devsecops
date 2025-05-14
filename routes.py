@@ -46,7 +46,9 @@ from utils.security import (
 app = Flask(__name__)
 
 # Configure database URI
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///some_very_long_database_path.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    "sqlite:///some_very_long_database_path.db"
+)
 
 # Create main blueprint
 main = Blueprint("main", __name__)
@@ -117,8 +119,9 @@ def add_to_cart_route(product_id: int) -> Response:
 
         if quantity <= 0:
             flash("Invalid quantity.", "error")
-            return redirect(url_for("main.product_detail", product_id=product_id))
-
+            return redirect(
+                url_for("main.product_detail", product_id=product_id)
+            )
         if add_to_cart(product, quantity):
             flash("Product added to cart.", "success")
         else:
@@ -190,9 +193,12 @@ def remove_from_cart_route(product_id: int) -> Response:
 
         return redirect(url_for("main.cart"))
     except SQLAlchemyError as e:
-        current_app.logger.error(f"Database error removing from cart: {str(e)}")
+        current_app.logger.error(
+            f"Database error removing from cart: {str(e)}"
+        )
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
+
 
 
 # ============================================================================
