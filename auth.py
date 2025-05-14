@@ -70,9 +70,8 @@ def register():
 
         if password != confirm_password:
             flash(
-                "Your password has been updated. "
-                "Please log in with your new password.",
-                "success",
+                "Passwords do not match.",
+                "error",
             )
             return render_template("auth/register.html")
 
@@ -205,7 +204,8 @@ def reset_password(token):
                 user.id,
             )
             flash(
-                "Your password has been reset successfully. You can now log in.",
+                "Your password has been reset successfully. "
+                "You can now log in.",
                 "success",
             )
             return redirect(url_for("auth.login"))
