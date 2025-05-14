@@ -45,7 +45,9 @@ class User(UserMixin, db.Model):
         Args:
             password (str): The plain text password to hash
         """
-        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+        self.password_hash = bcrypt.generate_password_hash(password).decode(
+            "utf-8"
+        )
 
     def check_password(self, password):
         """
