@@ -268,7 +268,11 @@ def checkout() -> Union[str, Response]:
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
             )
-            flash("An error occurred during checkout. Please try again.", "error")
+            flash(
+                "An error occurred during checkout. Please try again.",
+                "error"
+            )
+
             return redirect(url_for("main.cart"))
 
     else:
