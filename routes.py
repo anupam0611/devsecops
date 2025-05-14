@@ -223,13 +223,13 @@ def checkout() -> Union[str, Response]:
                 return redirect(url_for("main.cart"))
 
             # Create order
+            total_price = sum(
+                item["price"] * item["quantity"]
+                for item in cart_items
+            )
             order = Order(
                 user_id=current_user.id,
-                total = sum(
-                    item["price"] * item["quantity"]
-                    for item in cart_items
-                ),
-
+                total=total_price,
             )
             current_app.db.session.add(order)
 
