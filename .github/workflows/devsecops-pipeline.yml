@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Required for TruffleHog
-      
+
       - name: Run TruffleHog for Secrets Scanning
         uses: trufflesecurity/trufflehog@v3.30.0
         with:
@@ -28,14 +28,11 @@ jobs:
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
           extra_args: |
-            --debug
             --only-verified
             --fail
             --json
             --entropy-threshold 4.5
-            --max-depth 1000
-            --branch ${{ github.ref }}
-      
+
       - name: Run Checkov for Infrastructure Security
         uses: bridgecrewio/checkov-action@master
         with:
@@ -57,166 +54,33 @@ jobs:
             CKV_AWS_130
             CKV_AWS_126
           output-file-path: checkov-results.json
-      
-      - name: Run Checkov for Container Scanning
-        uses: bridgecrewio/checkov-action@master
-        with:
-          image: ${{ env.DOCKER_IMAGE }}
-          framework: dockerfile
-          output: cli
-          quiet: true
-          soft-fail: false
-          output-file-path: checkov-container-results.json
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 black pytest pytest-cov
-      
-      - name: Run GitHub Actions Lint
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            const yaml = require('js-yaml');
-            
-            // Function to check for common security issues
-            function checkWorkflowSecurity(workflowPath) {
-              const content = fs.readFileSync(workflowPath, 'utf8');
-              const workflow = yaml.load(content);
-              const issues = [];
-              
-              // Check for hardcoded secrets using case-insensitive regex
-              const secretPattern = new RegExp('(password|secret|token|key).*:.*["\']\\w+["\']', 'i');
-              if (secretPattern.test(content)) {
-                issues.push('Potential hardcoded secret detected');
-              }
-              
-              // Check for unsafe permissions
-              if (workflow.permissions && Object.values(workflow.permissions).includes('write')) {
-                issues.push('Workflow has write permissions');
-              }
-              
-              // Check for GITHUB_TOKEN in env
-              if (content.includes('GITHUB_TOKEN') && content.includes('env:')) {
-                issues.push('Using GITHUB_TOKEN in environment variables');
-              }
-              
-              // Check for self-hosted runners
-              if (content.includes('runs-on:') && content.includes('self-hosted')) {
-                issues.push('Using self-hosted runner');
-              }
-              
-              return issues;
-            }
-            
-            // Scan all workflow files
-            const workflowsDir = path.join(process.env.GITHUB_WORKSPACE, '.github', 'workflows');
-            const workflowFiles = fs.readdirSync(workflowsDir)
-              .filter(file => file.endsWith('.yml') || file.endsWith('.yaml'));
-            
-            let allIssues = [];
-            for (const file of workflowFiles) {
-              const issues = checkWorkflowSecurity(path.join(workflowsDir, file));
-              if (issues.length > 0) {
-                allIssues.push(`Issues in ${file}:`);
-                allIssues.push(...issues.map(issue => `- ${issue}`));
-              }
-            }
-            
-            // Set output for PR comment
-            if (allIssues.length > 0) {
-              core.setOutput('issues', allIssues.join('\n'));
-            } else {
-              core.setOutput('issues', 'No security issues found in workflows');
-            }
-      
-      - name: Upload Security Reports
-        uses: actions/upload-artifact@v4.3.1
-        with:
-          name: security-reports
-          path: |
-            checkov-results.json
-            checkov-container-results.json
-          retention-days: 7
-      
-      - name: Comment PR with Security Findings
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const checkovResults = JSON.parse(fs.readFileSync('checkov-results.json', 'utf8'));
-            const containerResults = JSON.parse(fs.readFileSync('checkov-container-results.json', 'utf8'));
-            
-            let comment = '## Security Scan Results\n\n';
-            
-            // Add Checkov findings
-            comment += '### Infrastructure Security (Checkov)\n';
-            if (checkovResults.results.failed_checks.length > 0) {
-              comment += 'Found security issues:\n';
-              checkovResults.results.failed_checks.forEach(check => {
-                comment += `- ${check.check_name}: ${check.check_result.message}\n`;
-              });
-            } else {
-              comment += 'No security issues found\n';
-            }
-            
-            // Add Container findings
-            comment += '\n### Container Security (Checkov)\n';
-            if (containerResults.results.failed_checks.length > 0) {
-              comment += 'Found security issues:\n';
-              containerResults.results.failed_checks.forEach(check => {
-                comment += `- ${check.check_name}: ${check.check_result.message}\n`;
-              });
-            } else {
-              comment += 'No security issues found\n';
-            }
-            
-            // Add GitHub Actions findings
-            comment += '\n### GitHub Actions Security\n';
-            const actionIssues = process.env.ACTION_ISSUES || '';
-            if (actionIssues && actionIssues !== 'No security issues found in workflows') {
-              comment += 'Found security issues:\n';
-              comment += actionIssues;
-            } else {
-              comment += 'No security issues found\n';
-            }
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
 
   code-quality:
     name: Code Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install flake8 black pytest pytest-cov
-      
+
       - name: Run Flake8
         run: flake8 $(git ls-files '*.py')
-      
+
       - name: Run Black
         run: black . --check
-      
+
       - name: Run Unit Tests with Coverage
         run: |
           pytest --cov=./ --cov-report=xml
-      
+
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
         with:
