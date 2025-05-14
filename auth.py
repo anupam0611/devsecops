@@ -5,6 +5,9 @@ This module handles user authentication, including login, registration,
 password reset, and account management.
 """
 
+# Standard library imports
+import smtplib
+
 # Third-party imports
 from flask import (
     Blueprint,
@@ -46,7 +49,10 @@ def login():
             return redirect(url_for("main.index"))
 
         log_security_event("login_failed", f"Failed login attempt for {email}")
-        flash("Invalid email or password.", "error")
+        flash(
+            "Invalid email or password. Please try again.",
+            "error",
+        )
 
     return render_template("auth/login.html")
 
@@ -63,11 +69,17 @@ def register():
         confirm_password = request.form.get("confirm_password")
 
         if password != confirm_password:
-            flash("Passwords do not match.", "error")
+            flash(
+                "Passwords do not match. Please enter the same password in both fields.",
+                "error",
+            )
             return render_template("auth/register.html")
 
         if User.query.filter_by(email=email).first():
-            flash("Email already registered.", "error")
+            flash(
+                "Email already registered. Please use a different email address.",
+                "error",
+            )
             return render_template("auth/register.html")
 
         try:
@@ -77,7 +89,10 @@ def register():
             current_app.db.session.commit()
 
             log_security_event("registration", f"New user registered: {email}", user.id)
-            flash("Registration successful. Please log in.", "success")
+            flash(
+                "Registration successful. Please log in to access your account.",
+                "success",
+            )
             return redirect(url_for("auth.login"))
 
         except SQLAlchemyError as e:
@@ -127,13 +142,13 @@ def reset_password_request():
                     user.id,
                 )
                 flash(
-                    "Password reset instructions sent to your email.",
+                    "Password reset instructions sent to your email address.",
                     "info",
                 )
                 return redirect(url_for("auth.login"))
 
-            except Exception as e:
-                current_app.logger.error(f"Error sending reset email: {str(e)}")
+            except smtplib.SMTPException as e:
+                current_app.logger.error(f"SMTP error while sending reset email: {str(e)}")
                 flash(
                     "Error sending reset email. Please try again.",
                     "error",
@@ -169,7 +184,10 @@ def reset_password(token):
             log_security_event(
                 "password_reset", f"Password reset for {user.email}", user.id
             )
-            flash("Your password has been reset.", "success")
+            flash(
+                "Your password has been reset successfully. You can now log in.",
+                "success",
+            )
             return redirect(url_for("auth.login"))
 
         except SQLAlchemyError as e:
