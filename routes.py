@@ -239,8 +239,7 @@ def checkout() -> Union[str, Response]:
 
             log_security_event(
                 "order_placed",
-                f"Order {
-                    order.id} placed successfully",
+                f"Order {order.id} placed successfully",
                 current_user.id,
             )
             flash("Order placed successfully!", "success")
@@ -254,8 +253,7 @@ def checkout() -> Union[str, Response]:
         except SQLAlchemyError as e:
             current_app.db.session.rollback()
             current_app.logger.error(
-                f"Database error during checkout: {
-                    str(e)}"
+                f"Database error during checkout: {str(e)}"
             )
             log_security_event(
                 "checkout_error", f"Database error: {str(e)}", current_user.id
@@ -290,8 +288,7 @@ def order_confirmation(order_id: int) -> Union[str, Response]:
         return render_template("order_confirmation.html", order=order)
     except SQLAlchemyError as e:
         current_app.logger.error(
-            f"Error accessing order confirmation: {
-                str(e)}"
+            f"Error accessing order confirmation: {str(e)}"
         )
         flash("An error occurred while accessing order details.", "error")
         return redirect(url_for("main.index"))
