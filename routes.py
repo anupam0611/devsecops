@@ -14,6 +14,7 @@ from typing import Union
 
 # Third-party imports
 from flask import (
+    Flask,
     Blueprint,
     render_template,
     request,
@@ -37,13 +38,16 @@ from utils.cart import (
 )
 from utils.security import validate_csrf_token, require_https, log_security_event
 
-# Create main blueprint
-main = Blueprint("main", __name__)
+# Create the Flask app
+app = Flask(__name__)
 
 # Configure database URI
 app.config["SQLALCHEMY_DATABASE_URI"] = (
     "sqlite:///some_very_long_database_path.db"
 )
+
+# Create main blueprint
+main = Blueprint("main", __name__)
 
 # ============================================================================
 # Product Display Routes
@@ -185,8 +189,7 @@ def remove_from_cart_route(product_id: int) -> Response:
         return redirect(url_for("main.cart"))
     except SQLAlchemyError as e:
         current_app.logger.error(
-            f"Database error removing from cart: {
-                str(e)}"
+            f"Database error removing from cart: {str(e)}"
         )
         flash("An error occurred while removing from cart.", "error")
         return redirect(url_for("main.index"))
