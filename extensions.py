@@ -14,3 +14,5 @@ session = Session()
 cors = CORS()
 limiter = Limiter(key_func=get_remote_address)
 mail = Mail()
+
+#test
