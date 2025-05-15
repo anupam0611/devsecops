@@ -27,13 +27,8 @@ from routes import main as main_blueprint
 from auth import auth as auth_blueprint
 
 # Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-login_manager = LoginManager()
-session = Session()
-cors = CORS()
-limiter = Limiter(key_func=get_remote_address)
-mail = Mail()
+from extensions import db, migrate, login_manager, session, cors, limiter, mail
+
 
 
 @login_manager.user_loader
@@ -105,11 +100,14 @@ def init_db():
         db.create_all()
 
         # Create admin user if not exists
-        admin = User.query.filter_by(email="admin@example.com").first()
-        if not admin:
-            admin = User(email="admin@example.com", name="Admin User", is_admin=True)
-            admin.set_password("Admin@123")  # Change this in production
+        if not User.query.filter_by(email="admin@example.com").first():
+            admin = User(
+                username="admin",
+                email="admin@example.com"
+            )
+            admin.set_password("admin123")
             db.session.add(admin)
+            db.session.commit()
 
         # Add sample products if none exist
         if not Product.query.first():

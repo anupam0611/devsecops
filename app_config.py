@@ -23,7 +23,8 @@ class BaseConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
-
+    UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+    
     # Add SESSION_TYPE configuration
     SESSION_TYPE = "filesystem"  # Store session data in the filesystem
 

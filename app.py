@@ -20,12 +20,11 @@ from flask_session import Session
 
 # Local imports
 from app_config import Config
-from models import User
+from models import User, db
 from auth import auth as auth_blueprint
 from routes import main as main_blueprint
 
 # Initialize extensions
-db = SQLAlchemy()
 login_manager = LoginManager()
 session = Session()
 cors = CORS()
@@ -57,6 +56,10 @@ def create_app(config_class: Any = Config) -> Flask:
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Configure the app
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Initialize extensions
     db.init_app(app)

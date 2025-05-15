@@ -23,6 +23,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # Local imports
 from models import User
+from extensions import db
 from utils.security import log_security_event
 
 # Create auth blueprint
@@ -85,7 +86,7 @@ def register():
         try:
             user = User(email=email)
             user.set_password(password)
-            current_app.db.session.add(user)
+            db.session.add(user)
             current_app.db.session.commit()
 
             log_security_event("registration", f"New user registered: {email}", user.id)

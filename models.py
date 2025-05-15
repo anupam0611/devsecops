@@ -4,11 +4,10 @@ This module defines the SQLAlchemy models for users, products, and orders.
 """
 
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
+from extensions import db
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
 
-db = SQLAlchemy()
 bcrypt = Bcrypt()
 
 
@@ -32,6 +31,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128))
     reset_token = db.Column(db.String(100), unique=True)
     reset_token_expiry = db.Column(db.DateTime)
+    is_admin = db.Column(db.Boolean, default=False)
     orders = db.relationship("Order", backref="user", lazy=True)
 
     def __repr__(self):
