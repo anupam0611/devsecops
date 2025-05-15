@@ -1,3 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+</head>
+<body>
+    <h1>Checkout Page</h1>
+    <p>Implement your checkout logic here.</p>
+</body>
+</html>
+
 {% extends "base.html" %}
 
 {% block content %}
@@ -9,7 +22,7 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Shipping Information</h5>
-                    <form method="POST" action="{{ url_for('checkout') }}">
+                    <form method="POST" action="{{ url_for('main.checkout') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <div class="row mb-3">
@@ -104,4 +117,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

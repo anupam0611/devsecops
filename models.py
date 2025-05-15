@@ -7,6 +7,7 @@ from datetime import datetime
 from extensions import db
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
 
 bcrypt = Bcrypt()
 
@@ -25,9 +26,11 @@ class User(UserMixin, db.Model):
         orders (list): List of orders made by the user
     """
 
+    __tablename__ = "user"
+
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(100), nullable=False, unique=True)
+    email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(128))
     reset_token = db.Column(db.String(100), unique=True)
     reset_token_expiry = db.Column(db.DateTime)
@@ -45,7 +48,7 @@ class User(UserMixin, db.Model):
         Args:
             password (str): The plain text password to hash
         """
-        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+        self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         """
@@ -57,7 +60,7 @@ class User(UserMixin, db.Model):
         Returns:
             bool: True if password matches, False otherwise
         """
-        return bcrypt.check_password_hash(self.password_hash, password)
+        return check_password_hash(self.password_hash, password)
 
     def get_active_orders(self):
         """

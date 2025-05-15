@@ -27,7 +27,7 @@ from extensions import db
 from utils.security import log_security_event
 
 # Create auth blueprint
-auth = Blueprint("auth", __name__)
+auth = Blueprint("auth", __name__, template_folder="templates/auth")
 
 
 @auth.route("/login", methods=["GET", "POST"])
@@ -61,45 +61,24 @@ def login():
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     """Handle user registration."""
-    if current_user.is_authenticated:
-        return redirect(url_for("main.index"))
-
     if request.method == "POST":
+        username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
 
-        if password != confirm_password:
-            flash(
-                "Passwords do not match.",
-                "error",
-            )
-            return render_template("auth/register.html")
-
+        # Check if the user already exists
         if User.query.filter_by(email=email).first():
-            flash(
-                "Invalid or expired password reset token. " + "Please try again.",
-                "error",
-            )
-            return render_template("auth/register.html")
+            flash("Email already registered.", "error")
+            return redirect(url_for("auth.register"))
 
-        try:
-            user = User(email=email)
-            user.set_password(password)
-            db.session.add(user)
-            current_app.db.session.commit()
+        # Create a new user
+        user = User(username=username, email=email)
+        user.set_password(password)  # Assuming `set_password` hashes the password
+        db.session.add(user)
+        db.session.commit()
 
-            log_security_event("registration", f"New user registered: {email}", user.id)
-            flash(
-                "Registration successful. Please log in to access your account.",
-                "success",
-            )
-            return redirect(url_for("auth.login"))
-
-        except SQLAlchemyError as e:
-            current_app.db.session.rollback()
-            current_app.logger.error(f"Database error during registration: {str(e)}")
-            flash("An error occurred during registration.", "error")
+        flash("Registration successful! Please log in.", "success")
+        return redirect(url_for("auth.login"))
 
     return render_template("auth/register.html")
 

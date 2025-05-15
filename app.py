@@ -16,6 +16,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 from flask_session import Session
+from flask_wtf.csrf import CSRFProtect
 
 # Local imports
 from app_config import Config
@@ -29,6 +30,7 @@ session = Session()
 cors = CORS()
 limiter = Limiter(key_func=get_remote_address)
 mail = Mail()
+csrf = CSRFProtect()
 
 
 @login_manager.user_loader
@@ -67,6 +69,7 @@ def create_app(config_class: Any = Config) -> Flask:
     cors.init_app(app)
     limiter.init_app(app)
     mail.init_app(app)
+    csrf.init_app(app)
 
     # Configure login manager
     login_manager.login_view = "auth.login"
