@@ -1,6 +1,5 @@
 import os
 from flask import Flask
-from flask_limiter.util import get_remote_address
 from extensions import db, migrate, login_manager, session, cors, limiter, mail
 from routes import main as main_blueprint
 from auth import auth as auth_blueprint
