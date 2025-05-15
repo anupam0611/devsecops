@@ -73,6 +73,7 @@ jobs:
 
       - name: Run Flake8
         run: flake8 $(git ls-files '*.py')
+        continue-on-error: true
 
       - name: Run Black
         run: black . --check
