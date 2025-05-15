@@ -37,10 +37,7 @@ def init_db():
 
         # Seed default admin user
         if not User.query.filter_by(email="admin@example.com").first():
-            admin = User(
-                username="admin",
-                email="admin@example.com"
-            )
+            admin = User(username="admin", email="admin@example.com")
             admin.set_password("admin123")
             admin.is_admin = True  # only if this attribute exists
             db.session.add(admin)
@@ -52,7 +49,7 @@ def init_db():
                 description="This is a sample product.",
                 price=9.99,
                 stock=100,
-                featured=True
+                featured=True,
             )
             db.session.add(sample_product)
 
