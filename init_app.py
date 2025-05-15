@@ -1,53 +1,15 @@
-"""
-Application initialization module.
-
-This module handles the initialization of the Flask application,
-including database setup, extension configuration, and blueprint registration.
-"""
-
-# Standard library imports
 import os
-
-# Third-party imports
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager
-from flask_cors import CORS
-from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_mail import Mail
-from werkzeug.security import generate_password_hash
-from flask_session import Session
-
-# Local imports
-from app_config import Config
-from models import User, Product
+from extensions import db, migrate, login_manager, session, cors, limiter, mail
 from routes import main as main_blueprint
 from auth import auth as auth_blueprint
-
-# Initialize extensions
-from extensions import db, migrate, login_manager, session, cors, limiter, mail
+from models import User, Product
 
 
-
-@login_manager.user_loader
-def load_user(user_id):
-    """Load a user from the database by ID."""
-    return User.query.get(int(user_id))
-
-
-def create_app(config_class=Config):
-    """Create and configure the Flask application.
-
-    Args:
-        config_class: The configuration class to use.
-
-    Returns:
-        Flask: The configured Flask application.
-    """
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.config.from_object("app_config.BaseConfig")
 
     # Initialize extensions
     db.init_app(app)
@@ -58,82 +20,45 @@ def create_app(config_class=Config):
     limiter.init_app(app)
     mail.init_app(app)
 
-    # Configure login manager
-    login_manager.login_view = "auth.login"
-    login_manager.login_message = "Please log in to access this page."
-    login_manager.login_message_category = "info"
-
-    # Register blueprints
-    app.register_blueprint(main_blueprint)
-    app.register_blueprint(auth_blueprint)
-
-    # Create upload folder if it doesn't exist
+    # Ensure upload folder exists
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-    # Initialize database
-    with app.app_context():
-        db.create_all()
-
-        # Create admin user if it doesn't exist
-        if not User.query.filter_by(email="admin@example.com").first():
-            admin = User(
-                email="admin@example.com",
-                password_hash=generate_password_hash("admin123"),
-                is_admin=True,
-            )
-            db.session.add(admin)
-            db.session.commit()
+    # Register Blueprints
+    app.register_blueprint(main_blueprint)
+    app.register_blueprint(auth_blueprint)
 
     return app
 
 
 def init_db():
-    """
-    Initialize the database with required tables and initial data.
+    app = create_app()
 
-    This function creates all database tables and populates them with
-    initial data if they don't exist.
-    """
-    flask_app = create_app()
-    with flask_app.app_context():
-        # Create all database tables
+    with app.app_context():
         db.create_all()
 
-        # Create admin user if not exists
+        # Seed default admin user
         if not User.query.filter_by(email="admin@example.com").first():
             admin = User(
                 username="admin",
                 email="admin@example.com"
             )
             admin.set_password("admin123")
+            admin.is_admin = True  # only if this attribute exists
             db.session.add(admin)
-            db.session.commit()
 
-        # Add sample products if none exist
-        if not Product.query.first():
-            products = [
-                Product(
-                    name="Sample Product 1",
-                    description="This is a sample product description",
-                    price=99.99,
-                    stock=100,
-                    category="Electronics",
-                ),
-                Product(
-                    name="Sample Product 2",
-                    description="Another sample product description",
-                    price=149.99,
-                    stock=50,
-                    category="Clothing",
-                ),
-            ]
-            db.session.add_all(products)
+        # Seed sample product
+        if not Product.query.filter_by(name="Sample Product").first():
+            sample_product = Product(
+                name="Sample Product",
+                description="This is a sample product.",
+                price=9.99,
+                stock=100,
+                featured=True
+            )
+            db.session.add(sample_product)
 
         db.session.commit()
-        print("Database initialized successfully!")
 
 
 if __name__ == "__main__":
     init_db()
-
-# Add a final newline at the end of the file
